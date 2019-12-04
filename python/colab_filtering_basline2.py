@@ -22,7 +22,7 @@ from sklearn.preprocessing import LabelEncoder
 
 def get_als_model(df,
                   rank,
-                  split=[0.9, 0.1],
+                  split=[0.8, 0.2],
                   model='ALS',
                   evaluator='Regression'):
     
@@ -96,7 +96,7 @@ def calculate_coverage(model):
 
 
 if __name__ == '__main__':
-    frac = 0.0001
+    frac = 0.1
     df, _, _ = load_pandas()
     df = df.sample(frac=frac, random_state=0)
     get_als_model(df, 5)

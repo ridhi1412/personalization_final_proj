@@ -10,7 +10,8 @@ import pandas as pd
 from pyspark import SparkContext
 from pyspark.sql import SQLContext
 
-DIRPATH = r'P:\rmahajan14\columbia\fall 2019\Personalization\final_project'
+#DIRPATH = r'P:\rmahajan14\columbia\fall 2019\Personalization\final_project'
+DIRPATH = r'..\\'
 EXCEL_PATH = os.path.join(DIRPATH, 'data')
 CACHE_PATH = os.path.join(DIRPATH, 'cache')
 
