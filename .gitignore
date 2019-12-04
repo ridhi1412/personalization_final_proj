@@ -1,5 +1,7 @@
-cache/
-data/
+cache/*
+data/*
+!cache/.gitkeep
+!data/.gitkeep
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
