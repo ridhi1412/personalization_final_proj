@@ -29,9 +29,9 @@ def get_als_model(df,
     train, test = df.randomSplit(split, seed=1)
 
     total_unique_businessids_train = train.select(
-        'movieId').distinct().toPandas().values
+        'business_id').distinct().toPandas().values
     total_unique_businessids_test = test.select(
-        'movieId').distinct().toPandas().values
+        'business_id').distinct().toPandas().values
 
     if model == 'ALS':
         model = ALS(
@@ -85,5 +85,10 @@ def calculate_coverage(model):
 
 
 if __name__ == '__main__':
-#    df, _, _ = load_pandas()
+    frac = 0.01
+    df, _, _ = load_pandas()
+    df = df.sample(frac=frac, random_state=0)
     get_als_model(df, 5)
+
+
+

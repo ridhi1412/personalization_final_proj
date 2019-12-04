@@ -31,4 +31,5 @@ def baseline_bias_model(df):
 if __name__ == '__main__':
     frac = 1
     df, _, _ = load_pandas()
-    baseline_bias_model(df.sample(frac, random_state=0))
+    df = df.sample(frac=frac, random_state=0)
+    baseline_bias_model(df)
