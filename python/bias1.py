@@ -29,5 +29,6 @@ def baseline_bias_model(df):
 
 
 if __name__ == '__main__':
-#    df, _, _ = load_pandas()
-    baseline_bias_model(df.sample(0.01, random_state=0))
+    frac = 1
+    df, _, _ = load_pandas()
+    baseline_bias_model(df.sample(frac, random_state=0))

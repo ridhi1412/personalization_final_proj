@@ -21,7 +21,7 @@ from sklearn.model_selection import train_test_split
 
 def get_als_model(df,
                   rank,
-                  split=0.2,
+                  split=[0.9, 0.1],
                   model='ALS',
                   evaluator='Regression'):
     df = pandas_to_spark(df)
