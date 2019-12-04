@@ -12,6 +12,7 @@ from common import CACHE_PATH, EXCEL_PATH
 from common import load_pandas, pandas_to_spark
 
 from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder
 
 #try:
 #    from sample_df import sample_df_threshold_use_pandas
@@ -24,6 +25,16 @@ def get_als_model(df,
                   split=[0.9, 0.1],
                   model='ALS',
                   evaluator='Regression'):
+    
+    le1 = LabelEncoder()
+    le1.fit(df['user_id'])
+    df['user_id'] = le1.transform(df['user_id'])
+    print(len(df['user_id']))
+    le2 = LabelEncoder()
+    le2.fit(df['business_id'])
+    df['business_id']=le2.transform(df['business_id'])
+    print(len(df['business_id']))
+    
     df = pandas_to_spark(df)
     
     train, test = df.randomSplit(split, seed=1)
@@ -85,7 +96,7 @@ def calculate_coverage(model):
 
 
 if __name__ == '__main__':
-    frac = 0.01
+    frac = 0.0001
     df, _, _ = load_pandas()
     df = df.sample(frac=frac, random_state=0)
     get_als_model(df, 5)
