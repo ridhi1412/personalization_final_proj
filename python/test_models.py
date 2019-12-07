@@ -49,35 +49,35 @@ def create_test_train(train, test):
     X_train = train.select(x_cols)
     y_train = train.select(y_cols)
 
-    X_test = train.select(x_cols)
-    y_test = train.select(y_cols)
+    X_test = test.select(x_cols)
+    y_test = test.select(y_cols)
 
     return (X_train, X_test, y_train, y_test)
 
 
 if __name__ == '__main__':
 
-#    # Create context
-#    sc, sqlCtx = get_create_context()
-#    
-#    # Get DF
-#    frac = 0.001
-#    df, _, _ = load_pandas()
-#    print('Getting df')
-#    df = df.sample(frac=frac, random_state=0)
-#    print('Got df')
-#    
-#    start = time()
-#    
-#    # Get predictions from ALS
-#    (y_predicted, model, rmse_train, rmse_test, coverage_train, coverage_test,
-#     running_time, train, test) = get_als_model(df, 5)
-#    
-#    #         Get train test
-#    X_train, X_test, y_train, y_test = create_test_train(train, test)
-#
-#    predictions = y_predicted.select(['user_id', 'business_id', 'prediction'])
+    # Create context
+    sc, sqlCtx = get_create_context()
+
+    # Get DF
+    frac = 0.001
+    df, _, _ = load_pandas()
+    print('Getting df')
+    df = df.sample(frac=frac, random_state=0)
+    print('Got df')
+
+    start = time()
+
+    # Get predictions from ALS
+    (y_predicted, model, rmse_train, rmse_test, coverage_train, coverage_test,
+     running_time, train, test) = get_als_model(df, 5)
+
+#         Get train test
+    X_train, X_test, y_train, y_test = create_test_train(train, test)
+    
+    predictions = y_predicted.select(['user_id', 'business_id', 'prediction'])
 
     # Calculate metrics
     average_overall_serendipity, average_serendipity = calculate_serendipity(
-        X_train, X_test, y_predicted, sqlCtx, rel_filter=1)
+        X_train, X_test, predictions, sqlCtx, rel_filter=1)
