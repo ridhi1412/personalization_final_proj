@@ -7,8 +7,8 @@ Created on Tue Dec  3 21:05:32 2019
 import os
 import pandas as pd
 
-import findspark
-findspark.init()
+#import findspark
+#findspark.init()
 
 from pyspark import SparkContext
 from pyspark.sql import SQLContext
@@ -19,7 +19,7 @@ from sys import platform
 if platform == 'win32':
     DIRPATH = r'E:\yelp'
 if platform == 'linux' or platform == 'linux2':
-    DIRPATH = r'..\\'
+    DIRPATH = r'../'
 EXCEL_PATH = os.path.join(DIRPATH, 'data')
 CACHE_PATH = os.path.join(DIRPATH, 'cache')
 
