@@ -469,6 +469,9 @@ def calculate_serendipity(y_train, y_test, y_predicted, sqlCtx, rel_filter=1):
         StructField("business_id", LongType(), True),
         StructField("rating", FloatType(), True)
     ]
+    
+    breakpoint()
+    
     schema = StructType(fields)
     schema_rate = sqlCtx.createDataFrame(full_corpus, schema)
     schema_rate.registerTempTable("ratings")
@@ -495,11 +498,11 @@ def calculate_serendipity(y_train, y_test, y_predicted, sqlCtx, rel_filter=1):
         lambda a_b: (a_b[0][0], a_b[0][1], a_b[1][1], a_b[1][1]))
     #    fields = [StructField("user", LongType(),True), StructField("item", LongType(), True),
     #          StructField("prediction", FloatType(), True), StructField("actual", FloatType(), True) ]
-    breakpoint()
+    
     schema = StructType([
-        StructField("user_id", StringType(), True),
-        StructField("business_id", StringType(), True),
-        StructField("prediction", StringType(), True),
+        StructField("user_id", LongType(), True),
+        StructField("business_id", LongType(), True),
+        StructField("prediction", FloatType(), True),
         StructField("rating", FloatType(), True)
     ])
     schema_preds = sqlCtx.createDataFrame(temp, schema)
