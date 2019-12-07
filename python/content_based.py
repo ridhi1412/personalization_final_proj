@@ -63,7 +63,7 @@ def find_recos(df):
     del df_agg_users
     del df_agg_rest
 
-#    sparse_mask = get_sparse_mask(df)
+    #    sparse_mask = get_sparse_mask(df)
 
     # # TODO check multiplication
     recos = get_recommendations(users_mat, rest_mat)
@@ -74,8 +74,9 @@ def find_recos(df):
     del rest_mat
 
     #TODO recos = sparse_mask.multiply(recos)
-    
+
     return recos
+
 
 def get_top_n(recos, num_rec):
     num_rec = 3
@@ -83,6 +84,8 @@ def get_top_n(recos, num_rec):
     for row_num in range(recos.shape[0]):
         if row_num % 10000 == 0:
             print(row_num)
+
+
 #            break
         row = recos.getrow(row_num).toarray()[0].ravel()
         top_ten_indicies[row_num] = row.argsort()[-num_rec:]
@@ -107,4 +110,4 @@ if __name__ == '__main__':
     num_rec = 3
     top_n_recs = get_top_n(recos=recos, num_rec=num_rec)
 #    breakpoint()
-        # top_ten_values = row[row.argsort()[-10:]]
+# top_ten_values = row[row.argsort()[-10:]]

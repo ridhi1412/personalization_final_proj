@@ -6,6 +6,10 @@ Created on Sat Oct 19 13:46:40 2019
 """
 import findspark
 findspark.init()
+
+import os
+import pandas as pd
+
 from pyspark.ml.evaluation import RegressionEvaluator
 from pyspark.ml.recommendation import ALS
 from pyspark.sql.functions import explode
@@ -26,62 +30,77 @@ def get_als_model(df,
                   rank,
                   split=[0.8, 0.2],
                   model='ALS',
-                  evaluator='Regression'):
-    
-    le1 = LabelEncoder()
-    le1.fit(df['user_id'])
-    df['user_id'] = le1.transform(df['user_id'])
-    print(len(df['user_id']))
-    le2 = LabelEncoder()
-    le2.fit(df['business_id'])
-    df['business_id']=le2.transform(df['business_id'])
-    print(len(df['business_id']))
-    
-    df = pandas_to_spark(df)
-    
-    train, test = df.randomSplit(split, seed=1)
+                  evaluator='Regression',
+                  use_cache=True):
 
-    total_unique_businessids_train = train.select(
-        'business_id').distinct().toPandas().values
-    total_unique_businessids_test = test.select(
-        'business_id').distinct().toPandas().values
+    cache_path = os.path.join(CACHE_PATH, f'get_als_model.msgpack')
+    if use_cache and os.path.exists(cache_path):
+        print(f'Loading from {cache_path}')
+        (predictions, model, rmse_train, rmse_test, coverage_train,
+         coverage_test, running_time, train,
+         test) = pd.read_msgpack(cache_path)
+        print(f'Loaded from {cache_path}')
+    else:
 
-    if model == 'ALS':
-        model = ALS(
-            maxIter=5,
-            regParam=0.09,
-            rank=rank,
-            userCol="user_id",
-            itemCol="business_id",
-            ratingCol="rating",
-            coldStartStrategy="drop",
-            nonnegative=True)
+        le1 = LabelEncoder()
+        le1.fit(df['user_id'])
+        df['user_id'] = le1.transform(df['user_id'])
+        print(len(df['user_id']))
+        le2 = LabelEncoder()
+        le2.fit(df['business_id'])
+        df['business_id'] = le2.transform(df['business_id'])
+        print(len(df['business_id']))
 
-    if evaluator == 'Regression':
-        evaluator = RegressionEvaluator(
-            metricName="rmse", labelCol="rating", predictionCol="prediction")
-    start = time()
-    model = model.fit(train)
-    running_time = time() - start
-    predictions = model.transform(test)
-    rmse_test = evaluator.evaluate(model.transform(test))
-    rmse_train = evaluator.evaluate(model.transform(train))
+        df = pandas_to_spark(df)
 
-    pred_unique_businessids = calculate_coverage(model)
-    subset_pred_train = [
-        i for i in pred_unique_businessids
-        if i in total_unique_businessids_train
-    ]
-    subset_pred_test = [
-        i for i in pred_unique_businessids
-        if i in total_unique_businessids_test
-    ]
-    coverage_train = len(subset_pred_train) / len(
-        total_unique_businessids_train)
-    coverage_test = len(subset_pred_test) / len(total_unique_businessids_test)
+        train, test = df.randomSplit(split, seed=1)
+
+        total_unique_businessids_train = train.select(
+            'business_id').distinct().toPandas().values
+        total_unique_businessids_test = test.select(
+            'business_id').distinct().toPandas().values
+
+        if model == 'ALS':
+            model = ALS(maxIter=5,
+                        regParam=0.09,
+                        rank=rank,
+                        userCol="user_id",
+                        itemCol="business_id",
+                        ratingCol="rating",
+                        coldStartStrategy="drop",
+                        nonnegative=True)
+
+        if evaluator == 'Regression':
+            evaluator = RegressionEvaluator(metricName="rmse",
+                                            labelCol="rating",
+                                            predictionCol="prediction")
+        start = time()
+        model = model.fit(train)
+        running_time = time() - start
+        predictions = model.transform(test)
+        rmse_test = evaluator.evaluate(model.transform(test))
+        rmse_train = evaluator.evaluate(model.transform(train))
+
+        pred_unique_businessids = calculate_coverage(model)
+        subset_pred_train = [
+            i for i in pred_unique_businessids
+            if i in total_unique_businessids_train
+        ]
+        subset_pred_test = [
+            i for i in pred_unique_businessids
+            if i in total_unique_businessids_test
+        ]
+        coverage_train = len(subset_pred_train) / len(
+            total_unique_businessids_train)
+        coverage_test = len(subset_pred_test) / len(
+            total_unique_businessids_test)
+
+        #        pd.to_msgpack(cache_path, (predictions, model, rmse_train, rmse_test, coverage_train,
+        #            coverage_test, running_time, train, test))
+        print(f'Dumping to {cache_path}')
 
     return (predictions, model, rmse_train, rmse_test, coverage_train,
-            coverage_test, running_time)
+            coverage_test, running_time, train, test)
 
 
 def calculate_coverage(model):
@@ -104,10 +123,7 @@ if __name__ == '__main__':
     df = df.sample(frac=frac, random_state=0)
     print('Got df')
     start = time()
-    (predictions, model, rmse_train, rmse_test, coverage_train,
-     coverage_test, running_time) = get_als_model(df, 5)
+    (predictions, model, rmse_train, rmse_test, coverage_train, coverage_test,
+     running_time) = get_als_model(df, 5)
     running_time = time() - start
     print(f'running time = {running_time}')
-
-
-

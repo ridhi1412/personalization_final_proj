@@ -15,7 +15,6 @@ from pyspark.sql import SQLContext
 
 from sys import platform
 
-
 if platform == 'win32':
     DIRPATH = r'E:\yelp'
 if platform == 'linux' or platform == 'linux2':
@@ -25,6 +24,9 @@ CACHE_PATH = os.path.join(DIRPATH, 'cache')
 
 import json
 from tqdm.auto import tqdm
+
+FRACTION = 0.001
+
 
 def pandas_to_spark(pandas_df):
     sc = SparkContext.getOrCreate()  # else get multiple contexts error
@@ -41,7 +43,8 @@ def load_pandas(file_name='review.json', use_cache=True):
         print(f'Loaded from {cache_path}')
     else:
         line_count = len(
-        open(os.path.join(EXCEL_PATH, file_name), encoding='utf8').readlines())
+            open(os.path.join(EXCEL_PATH, file_name),
+                 encoding='utf8').readlines())
         user_ids, business_ids, stars, dates, text = [], [], [], [], []
         with open(os.path.join(EXCEL_PATH, file_name), encoding='utf8') as f:
             for line in tqdm(f, total=line_count):
@@ -51,7 +54,7 @@ def load_pandas(file_name='review.json', use_cache=True):
                 stars += [blob["stars"]]
                 dates += [blob["date"]]
                 text += [blob["text"]]
-    
+
         ratings = pd.DataFrame({
             "user_id": user_ids,
             "business_id": business_ids,
@@ -61,7 +64,7 @@ def load_pandas(file_name='review.json', use_cache=True):
         })
         user_counts = ratings["user_id"].value_counts()
         active_users = user_counts.loc[user_counts >= 5].index.tolist()
-        
+
         pd.to_msgpack(cache_path, (ratings, user_counts, active_users))
         print(f'Dumping to {cache_path}')
     return ratings, user_counts, active_users

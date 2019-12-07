@@ -12,11 +12,11 @@ def baseline_bias_model(df):
         Shows the performance of model based on just bias
     """
     ratings_pandas_df = df.drop(columns=['date'])
-#    ratings_pandas_df.columns = ['user_id', 'business_id', 'rating']
+    #    ratings_pandas_df.columns = ['user_id', 'business_id', 'rating']
 
     reader = Reader(rating_scale=(1, 5))  #TODO figure out
-    data = surprise.dataset.Dataset.load_from_df(
-        df=ratings_pandas_df, reader=reader)
+    data = surprise.dataset.Dataset.load_from_df(df=ratings_pandas_df,
+                                                 reader=reader)
     _ = cross_validate(
         surprise.prediction_algorithms.baseline_only.BaselineOnly(),
         data,
