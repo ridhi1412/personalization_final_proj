@@ -60,12 +60,10 @@ def find_recos(df):
     users_mat = sp.vstack(df_agg_users)
     rest_mat = sp.vstack(df_agg_rest)
 
-    breakpoint()
-
     del df_agg_users
     del df_agg_rest
 
-    sparse_mask = get_sparse_mask(df)
+#    sparse_mask = get_sparse_mask(df)
 
     # # TODO check multiplication
     recos = get_recommendations(users_mat, rest_mat)
@@ -75,7 +73,9 @@ def find_recos(df):
     del users_mat
     del rest_mat
 
-    recos = sparse_mask.multiply(recos)
+    
+    #TODO recos = sparse_mask.multiply(recos)
+    
     return recos
 
 if __name__ == '__main__':
@@ -94,13 +94,14 @@ if __name__ == '__main__':
     print('Grouping')
 
     recos = find_recos(df)
-
-    breakpoint()
-
-    top_ten_indicies = []
+    
+#    breakpoint()
+    num_rec = 3
+    top_ten_indicies = np.zeros(shape=(recos.shape[0], num_rec))
     for row_num in range(recos.shape[0]):
-        if row_num % 1000 == 0:
+        if row_num % 10000 == 0:
             print(row_num)
-        row = recos2.getrow(row_num).toarray()[0].ravel()
-        top_ten_indicies.append(row.argsort()[-3:])
+#            break
+        row = recos.getrow(row_num).toarray()[0].ravel()
+        top_ten_indicies[row_num] = row.argsort()[-num_rec:]
         # top_ten_values = row[row.argsort()[-10:]]
