@@ -470,7 +470,7 @@ def calculate_serendipity(y_train, y_test, y_predicted, sqlCtx, rel_filter=1):
         StructField("rating", FloatType(), True)
     ]
     
-    breakpoint()
+#    breakpoint()
     
     schema = StructType(fields)
     schema_rate = sqlCtx.createDataFrame(full_corpus, schema)
@@ -483,6 +483,7 @@ def calculate_serendipity(y_train, y_test, y_predicted, sqlCtx, rel_filter=1):
 
     n = item_ranking.count()
     #determine the probability for each item in the corpus
+    print(f'Reached here 1')
     item_ranking_with_prob = item_ranking.rdd.map(
         lambda item_id_avg_rate_rank:
         (item_id_avg_rate_rank[0], item_id_avg_rate_rank[1],
@@ -499,6 +500,7 @@ def calculate_serendipity(y_train, y_test, y_predicted, sqlCtx, rel_filter=1):
         lambda a_b: (a_b[0][0], a_b[0][1], a_b[1][1], a_b[1][1]))
     #    fields = [StructField("user", LongType(),True), StructField("item", LongType(), True),
     #          StructField("prediction", FloatType(), True), StructField("actual", FloatType(), True) ]
+    print(f'Reached here 2')
     schema = StructType([
         StructField("user_id", LongType(), True),
         StructField("business_id", LongType(), True),
@@ -509,20 +511,21 @@ def calculate_serendipity(y_train, y_test, y_predicted, sqlCtx, rel_filter=1):
     schema_preds.registerTempTable("preds")
 
     #determine the ranking of predictions by each user
-    user_ranking = sqlCtx.sql("select user, item, prediction, row_number() \
-        over(Partition by user ORDER BY prediction desc) as rank \
-        from preds order by user, prediction desc")
+    user_ranking = sqlCtx.sql("select user_id, business_id, prediction, row_number() \
+        over(Partition by user_id ORDER BY prediction desc) as rank \
+        from preds order by user_id, prediction desc")
     user_ranking.registerTempTable("user_rankings")
 
     #find the number of predicted items by user
     user_counts = sqlCtx.sql(
-        "select user, count(item) as num_found from preds group by user")
+        "select user_id, count(business_id) as num_found from preds group by user_id")
     user_counts.registerTempTable("user_counts")
 
     #use the number of predicted items and item rank to determine the probability an item is predicted
+    print(f'Reached here 3')
     user_info = sqlCtx.sql(
-        "select r.user, item, prediction, rank, num_found from user_rankings as r, user_counts as c\
-        where r.user=c.user")
+        "select r.user_id, business_id, prediction, rank, num_found from user_rankings as r, user_counts as c\
+        where r.user_id=c.user_id")
     user_ranking_with_prob = user_info.rdd.map(lambda user_item_pred_rank_num: \
                                      (user_item_pred_rank_num[0], user_item_pred_rank_num[1], user_item_pred_rank_num[3], user_item_pred_rank_num[4], prob_by_rank(user_item_pred_rank_num[3], user_item_pred_rank_num[4])))
 
@@ -539,6 +542,7 @@ def calculate_serendipity(y_train, y_test, y_predicted, sqlCtx, rel_filter=1):
         label_value_sum_count[0], label_value_sum_count[1][0] / float(
             label_value_sum_count[1][1])))
 
+    print(f'Reached here 4')
     num = float(serendipityByUser.count())
     average_serendipity = serendipityByUser.rdd.map(
         lambda user_serendipity: user_serendipity[1]).reduce(add) / num

@@ -1,10 +1,12 @@
-#import findspark
-#findspark.init()
+
+from common import CACHE_PATH, EXCEL_PATH
+
+
 from pyspark.ml.evaluation import RegressionEvaluator
 from pyspark.ml.recommendation import ALS
 from pyspark.sql.functions import explode
 from time import time
-from common import CACHE_PATH, EXCEL_PATH
+
 from common import load_pandas, pandas_to_spark
 
 import scipy.sparse as sp

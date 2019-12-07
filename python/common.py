@@ -15,11 +15,19 @@ from pyspark.sql import SQLContext
 
 from sys import platform
 
-if platform == 'win32':
-#    DIRPATH = r'E:\yelp'
+import getpass
+user = getpass.getuser()
+
+if user == 'rmahajan14':
     DIRPATH = r'P:\rmahajan14\columbia\fall 2019\Personalization\final_project'
-if platform == 'linux' or platform == 'linux2':
+if user == 'anirudh':
     DIRPATH = r'../'
+if user == 'Sheetal':
+    DIRPATH = r'../'
+if user == 'aksmi':
+    DIRPATH = r'E:\yelp'
+    import findspark
+    findspark.init()
 EXCEL_PATH = os.path.join(DIRPATH, 'data')
 CACHE_PATH = os.path.join(DIRPATH, 'cache')
 
