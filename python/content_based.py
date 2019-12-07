@@ -6,7 +6,11 @@ from pyspark.sql.functions import explode
 from time import time
 from common import CACHE_PATH, EXCEL_PATH
 from common import load_pandas, pandas_to_spark
+
 import scipy.sparse as sp
+import numpy as np
+
+import gc
 
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
@@ -44,6 +48,36 @@ def get_recommendations(user_mat, item_mat):
     return cosine_similarities
 
 
+def get_sparse_mask(df):
+    rows, r_pos = np.unique(df['user_id'], return_inverse=True)
+    cols, c_pos = np.unique(df['business_id'], return_inverse=True)
+    s = sp.coo_matrix((np.ones(r_pos.shape, int), (r_pos, c_pos)))
+    return s
+
+
+def find_recos(df):
+    df_agg_users, df_agg_rest = get_avg_vectors(df)
+    users_mat = sp.vstack(df_agg_users)
+    rest_mat = sp.vstack(df_agg_rest)
+
+    breakpoint()
+
+    del df_agg_users
+    del df_agg_rest
+
+    sparse_mask = get_sparse_mask(df)
+
+    # # TODO check multiplication
+    recos = get_recommendations(users_mat, rest_mat)
+
+    gc.collect()
+
+    del users_mat
+    del rest_mat
+
+    recos = sparse_mask.multiply(recos)
+    return recos
+
 if __name__ == '__main__':
     frac = 0.01
     df, _, _ = load_pandas()
@@ -52,19 +86,21 @@ if __name__ == '__main__':
     print('Got df')
     start = time()
     tfidf_vectorizer(df)
+
+    gc.collect()
+
     running_time = time() - start
     print(f'running time = {running_time}')
     print('Grouping')
-    df_agg_users, df_agg_rest = get_avg_vectors(df)
-    users_mat = sp.vstack(df_agg_users)
-    rest_mat = sp.vstack(df_agg_rest)
 
-    # TODO check multiplication
-    recos = get_recommendations(users_mat, rest_mat)
+    recos = find_recos(df)
+
+    breakpoint()
+
     top_ten_indicies = []
     for row_num in range(recos.shape[0]):
         if row_num % 1000 == 0:
             print(row_num)
-        row = recos.getrow(row_num).toarray()[0].ravel()
+        row = recos2.getrow(row_num).toarray()[0].ravel()
         top_ten_indicies.append(row.argsort()[-3:])
         # top_ten_values = row[row.argsort()[-10:]]
