@@ -96,10 +96,10 @@ def calculate_coverage(model):
 
 
 if __name__ == '__main__':
-    frac = 0.1
+    frac = 0.001
     df, _, _ = load_pandas()
     df = df.sample(frac=frac, random_state=0)
-    get_als_model(df, 5)
+    print(get_als_model(df, 5)[0])
 
 
 
