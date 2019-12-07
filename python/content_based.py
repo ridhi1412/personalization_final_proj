@@ -61,9 +61,10 @@ if __name__ == '__main__':
 
     # TODO check multiplication
     recos = get_recommendations(users_mat, rest_mat)
-
+    top_ten_indicies = []
     for row_num in range(recos.shape[0]):
-        print(row_num)
+        if row_num % 1000 == 0:
+            print(row_num)
         row = recos.getrow(row_num).toarray()[0].ravel()
-        top_ten_indicies = row.argsort()[-10:]
-        top_ten_values = row[row.argsort()[-10:]]
+        top_ten_indicies.append(row.argsort()[-3:])
+        # top_ten_values = row[row.argsort()[-10:]]
