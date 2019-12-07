@@ -20,14 +20,14 @@ from sklearn.metrics.pairwise import linear_kernel
 
 def tfidf_vectorizer(df):
     # https://stackoverflow.com/questions/45981037/sklearn-tf-idf-to-drop-numbers
-    args = {
+    kwargs = {
         'lowercase': True,
         'stop_words': 'english',
         'token_pattern': u'(?ui)\\b\\w*[a-z]+\\w*\\b'
     }
     reviews = df['text'].values
     print('converted to values')
-    vectorizer = TfidfVectorizer(**args)
+    vectorizer = TfidfVectorizer(**kwargs)
     print('converting to review vector')
     df['review_vector'] = list(vectorizer.fit_transform(reviews))
     # breakpoint()
@@ -73,10 +73,20 @@ def find_recos(df):
     del users_mat
     del rest_mat
 
-    
     #TODO recos = sparse_mask.multiply(recos)
     
     return recos
+
+def get_top_n(recos, num_rec):
+    num_rec = 3
+    top_ten_indicies = np.zeros(shape=(recos.shape[0], num_rec))
+    for row_num in range(recos.shape[0]):
+        if row_num % 10000 == 0:
+            print(row_num)
+#            break
+        row = recos.getrow(row_num).toarray()[0].ravel()
+        top_ten_indicies[row_num] = row.argsort()[-num_rec:]
+        return top_n_indicies
 
 if __name__ == '__main__':
     frac = 0.01
@@ -94,14 +104,7 @@ if __name__ == '__main__':
     print('Grouping')
 
     recos = find_recos(df)
-    
-#    breakpoint()
     num_rec = 3
-    top_ten_indicies = np.zeros(shape=(recos.shape[0], num_rec))
-    for row_num in range(recos.shape[0]):
-        if row_num % 10000 == 0:
-            print(row_num)
-#            break
-        row = recos.getrow(row_num).toarray()[0].ravel()
-        top_ten_indicies[row_num] = row.argsort()[-num_rec:]
+    top_n_recs = get_top_n(recos=recos, num_rec=num_rec)
+#    breakpoint()
         # top_ten_values = row[row.argsort()[-10:]]
