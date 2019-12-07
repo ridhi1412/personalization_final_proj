@@ -16,7 +16,8 @@ from pyspark.sql import SQLContext
 from sys import platform
 
 if platform == 'win32':
-    DIRPATH = r'E:\yelp'
+#    DIRPATH = r'E:\yelp'
+    DIRPATH = r'P:\rmahajan14\columbia\fall 2019\Personalization\final_project'
 if platform == 'linux' or platform == 'linux2':
     DIRPATH = r'../'
 EXCEL_PATH = os.path.join(DIRPATH, 'data')

@@ -4,8 +4,8 @@ Created on Sat Oct 19 13:46:40 2019
 
 @author: rmahajan14
 """
-import findspark
-findspark.init()
+#import findspark
+#findspark.init()
 
 import os
 import pandas as pd

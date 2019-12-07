@@ -473,9 +473,10 @@ def calculate_serendipity(y_train, y_test, y_predicted, sqlCtx, rel_filter=1):
     schema_rate = sqlCtx.createDataFrame(full_corpus, schema)
     schema_rate.registerTempTable("ratings")
 
+#    breakpoint()
     item_ranking = sqlCtx.sql(
-        "select item, avg(rating) as avg_rate, row_number() over(ORDER BY avg(rating) desc) as rank \
-        from ratings group by item order by avg_rate desc")
+        "select business_id, avg(rating) as avg_rate, row_number() over(ORDER BY avg(rating) desc) as rank \
+        from ratings group by business_id order by avg_rate desc")
 
     n = item_ranking.count()
     #determine the probability for each item in the corpus
@@ -486,16 +487,16 @@ def calculate_serendipity(y_train, y_test, y_predicted, sqlCtx, rel_filter=1):
 
     #format the 'relevant' predictions as a queriable table
     #these are those predictions for which we have ratings above the threshold
-    y_test = y_test.filter(lambda u_i_r4: u_i_r4[2] >= rel_filter).rdd.map(
+    y_test = y_test.rdd.filter(lambda u_i_r4: u_i_r4[2] >= rel_filter).map(
         lambda u_i_r5: (u_i_r5[0], u_i_r5[1], float(u_i_r5[2])))
 
     predictionsAndRatings = y_predicted.rdd.map(lambda x: ((x[0], x[1]), x[2])) \
-      .join(y_test.rdd.map(lambda x: ((x[0], x[1]), x[2])))
-    temp = predictionsAndRatings.rdd.map(
+      .join(y_test.map(lambda x: ((x[0], x[1]), x[2])))
+    temp = predictionsAndRatings.map(
         lambda a_b: (a_b[0][0], a_b[0][1], a_b[1][1], a_b[1][1]))
     #    fields = [StructField("user", LongType(),True), StructField("item", LongType(), True),
     #          StructField("prediction", FloatType(), True), StructField("actual", FloatType(), True) ]
-    breakpoint()
+#    breakpoint()
     schema = StructType([
         StructField("user_id", StringType(), True),
         StructField("business_id", StringType(), True),
