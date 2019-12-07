@@ -1,5 +1,5 @@
-import findspark
-findspark.init()
+#import findspark
+#findspark.init()
 from pyspark.ml.evaluation import RegressionEvaluator
 from pyspark.ml.recommendation import ALS
 from pyspark.sql.functions import explode
@@ -111,3 +111,4 @@ if __name__ == '__main__':
     top_n_recs = get_top_n(recos=recos, num_rec=num_rec)
 #    breakpoint()
 # top_ten_values = row[row.argsort()[-10:]]
+
