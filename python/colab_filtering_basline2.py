@@ -4,6 +4,8 @@ Created on Sat Oct 19 13:46:40 2019
 
 @author: rmahajan14
 """
+import findspark
+findspark.init()
 from pyspark.ml.evaluation import RegressionEvaluator
 from pyspark.ml.recommendation import ALS
 from pyspark.sql.functions import explode
@@ -98,8 +100,14 @@ def calculate_coverage(model):
 if __name__ == '__main__':
     frac = 0.1
     df, _, _ = load_pandas()
+    print('Getting df')
     df = df.sample(frac=frac, random_state=0)
-    get_als_model(df, 5)
+    print('Got df')
+    start = time()
+    (predictions, model, rmse_train, rmse_test, coverage_train,
+     coverage_test, running_time) = get_als_model(df, 5)
+    running_time = time() - start
+    print(f'running time = {running_time}')
 
 
 
