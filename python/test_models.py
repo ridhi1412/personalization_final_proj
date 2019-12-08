@@ -23,7 +23,9 @@ import scipy.sparse as sp
 import numpy as np
 
 import gc
-from hermes import calculate_serendipity
+from hermes import (calculate_serendipity, 
+                    calculate_novelty, 
+                    calculate_prediction_coverage)
 
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
@@ -80,5 +82,14 @@ if __name__ == '__main__':
     predictions = y_predicted.select(['user_id', 'business_id', 'prediction'])
 
     # Calculate metrics
-    average_overall_serendipity, average_serendipity = calculate_serendipity(
-        X_train, X_test, predictions, sqlCtx, rel_filter=1)
+#    average_overall_serendipity, average_serendipity = calculate_serendipity(
+#        X_train, X_test, predictions, sqlCtx, rel_filter=1)
+
+    avg_overall_novelty, avg_novelty = calculate_novelty(
+        X_train, X_test, predictions, sqlCtx)
+    
+    pred_coverage = calculate_prediction_coverage(y_test, predictions)
+    
+    print(f"""{avg_overall_novelty} = overall, 
+              {avg_novelty}=avg, 
+              {pred_coverage}=coverage""")

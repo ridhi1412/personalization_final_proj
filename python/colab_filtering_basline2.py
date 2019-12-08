@@ -76,7 +76,7 @@ def get_als_model(df,
         start = time()
         model = model.fit(train)
         running_time = time() - start
-        predictions = model.transform(test)
+             = model.transform(test)
         rmse_test = evaluator.evaluate(model.transform(test))
         rmse_train = evaluator.evaluate(model.transform(train))
 
@@ -97,7 +97,9 @@ def get_als_model(df,
         #        pd.to_msgpack(cache_path, (predictions, model, rmse_train, rmse_test, coverage_train,
         #            coverage_test, running_time, train, test))
         print(f'Dumping to {cache_path}')
-
+        
+    breakpoint()
+        
     return (predictions, model, rmse_train, rmse_test, coverage_train,
             coverage_test, running_time, train, test)
 

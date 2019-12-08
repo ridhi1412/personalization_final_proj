@@ -425,9 +425,12 @@ def calculate_prediction_coverage(y_actual, y_predicted):
         item_coverage: value representing the percentage of user-item pairs that were able to be predicted
     """
 
-    predictionsAndRatings = y_predicted.map(lambda x: ((x[0], x[1]), x[2])) \
-      .join(y_actual.map(lambda x: ((x[0], x[1]), x[2])))
-
+    predictionsAndRatings = y_predicted.rdd.map(lambda x: ((x[0], x[1]), x[2])) \
+      .join(y_actual.rdd.map(lambda x: ((x[0], x[1]), x[2])))
+      
+    
+    breakpoint()
+      
     num_found_predictions = predictionsAndRatings.count()
     num_test_set = y_actual.count()
 
@@ -552,7 +555,7 @@ def calculate_serendipity(y_train, y_test, y_predicted, sqlCtx, rel_filter=1):
 
         #alternatively we could average not by user first, so heavier users will be more influential
     #for now we shall return both
-    average_overall_serendipity = data.rdd.map(
+    average_overall_serendipity = data.map(
         lambda user_serendipity1: user_serendipity1[1]).reduce(add) / float(
             data.count())
 
@@ -594,12 +597,14 @@ def calculate_novelty(y_train, y_test, y_predicted, sqlCtx):
         lambda item_id_avg_rate_rank7: (item_id_avg_rate_rank7[0], (
             item_id_avg_rate_rank7[1], item_id_avg_rate_rank7[2],
             log(max(prob_by_rank(item_id_avg_rate_rank7[2], n), 1e-100), 2))))
+    
+#    breakpoint()
 
-    user_novelty = y_predicted.keyBy(lambda u_i_p8: u_i_p8[1]).join(item_ranking_with_nov).rdd.map(lambda i_u_p_pop: (i_u_p_pop[1][0][0], i_u_p_pop[1][1][2]))\
-        .groupBy(lambda user_pop: user_pop[0]).rdd.map(lambda user_user_item_probs:(np.mean(list(user_user_item_probs[1]), axis=0)[1])).collect()
+    user_novelty = y_predicted.rdd.keyBy(lambda u_i_p8: u_i_p8[1]).join(item_ranking_with_nov).map(lambda i_u_p_pop: (i_u_p_pop[1][0][0], i_u_p_pop[1][1][2]))\
+        .groupBy(lambda user_pop: user_pop[0]).map(lambda user_user_item_probs:(np.mean(list(user_user_item_probs[1]), axis=0)[1])).collect()
 
-    all_novelty = y_predicted.keyBy(lambda u_i_p9: u_i_p9[1]).join(
-        item_ranking_with_nov).rdd.map(lambda i_u_p_pop10:
+    all_novelty = y_predicted.rdd.keyBy(lambda u_i_p9: u_i_p9[1]).join(
+        item_ranking_with_nov).map(lambda i_u_p_pop10:
                                        (i_u_p_pop10[1][1][2])).collect()
     avg_overall_novelty = float(np.mean(all_novelty))
 
