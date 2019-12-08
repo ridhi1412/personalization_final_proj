@@ -545,7 +545,7 @@ def calculate_serendipity(y_train, y_test, y_predicted, sqlCtx, rel_filter=1):
             label_value_sum_count[1][1])))
 
     print(f'Reached here 4')
-    breakpoint()
+
     num = float(serendipityByUser.count())
     average_serendipity = serendipityByUser.map(
         lambda user_serendipity: user_serendipity[1]).reduce(add) / num
