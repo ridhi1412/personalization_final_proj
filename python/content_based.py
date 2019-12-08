@@ -82,7 +82,7 @@ def find_recos(df):
 
 def get_top_n(recos, num_rec):
     num_rec = 3
-    top_ten_indicies = np.zeros(shape=(recos.shape[0], num_rec))
+    top_n_indicies = np.zeros(shape=(recos.shape[0], num_rec))
     for row_num in range(recos.shape[0]):
         if row_num % 10000 == 0:
             print(row_num)

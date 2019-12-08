@@ -7,16 +7,18 @@ Created on Tue Dec  3 21:05:32 2019
 import os
 import pandas as pd
 
-#import findspark
-#findspark.init()
+
+import getpass
+user = getpass.getuser()
+
+if user == 'aksmi':
+    import findspark
+    findspark.init()
 
 from pyspark import SparkContext
 from pyspark.sql import SQLContext
 
 from sys import platform
-
-import getpass
-user = getpass.getuser()
 
 if user == 'rmahajan14':
     DIRPATH = r'P:\rmahajan14\columbia\fall 2019\Personalization\final_project'
@@ -26,8 +28,7 @@ if user == 'Sheetal':
     DIRPATH = r'../'
 if user == 'aksmi':
     DIRPATH = r'E:\yelp'
-    import findspark
-    findspark.init()
+    
 EXCEL_PATH = os.path.join(DIRPATH, 'data')
 CACHE_PATH = os.path.join(DIRPATH, 'cache')
 

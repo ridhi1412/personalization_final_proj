@@ -532,19 +532,22 @@ def calculate_serendipity(y_train, y_test, y_predicted, sqlCtx, rel_filter=1):
     #now combine the two to determine (user, item_prob_diff) by item
     data = user_ranking_with_prob.keyBy(lambda p: p[1])\
         .join(item_ranking_with_prob.keyBy(lambda p:p[0]))\
-        .rdd.map(lambda item_a_b: (item_a_b[1][0][0], max(item_a_b[1][0][4]-item_a_b[1][1][3],0)))\
+        .map(lambda item_a_b: (item_a_b[1][0][0], max(item_a_b[1][0][4]-item_a_b[1][1][3],0)))\
 
     #combine the item_prob_diff by user and average to get the average serendiptiy by user
     sumCount = data.combineByKey(lambda value: (value, 1), lambda x, value:
                                  (x[0] + value, x[1] + 1), lambda x, y:
                                  (x[0] + y[0], x[1] + y[1]))
-    serendipityByUser = sumCount.rdd.map(lambda label_value_sum_count: (
+        
+
+    serendipityByUser = sumCount.map(lambda label_value_sum_count: (
         label_value_sum_count[0], label_value_sum_count[1][0] / float(
             label_value_sum_count[1][1])))
 
     print(f'Reached here 4')
+    breakpoint()
     num = float(serendipityByUser.count())
-    average_serendipity = serendipityByUser.rdd.map(
+    average_serendipity = serendipityByUser.map(
         lambda user_serendipity: user_serendipity[1]).reduce(add) / num
 
         #alternatively we could average not by user first, so heavier users will be more influential
