@@ -41,6 +41,7 @@ def get_avg_vectors(df):
                    df.groupby('user_id')['user_id'].count()
     df_agg_rest = df.groupby('business_id')['review_vector'].sum() / \
                   df.groupby('business_id')['user_id'].count()
+    breakpoint()
     return df_agg_users, df_agg_rest
 
 
@@ -94,7 +95,7 @@ def get_top_n(recos, num_rec):
         return top_n_indicies
 
 if __name__ == '__main__':
-    frac = 0.01
+    frac = 0.001
     df, _, _ = load_pandas()
     print('Getting df')
     df = df.sample(frac=frac, random_state=0)
@@ -109,8 +110,8 @@ if __name__ == '__main__':
     print('Grouping')
 
     recos = find_recos(df)
-    num_rec = 3
-    top_n_recs = get_top_n(recos=recos, num_rec=num_rec)
+    # num_rec = 3
+    # top_n_recs = get_top_n(recos=recos, num_rec=num_rec)
 #    breakpoint()
 # top_ten_values = row[row.argsort()[-10:]]
 

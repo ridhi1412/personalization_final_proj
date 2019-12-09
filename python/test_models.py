@@ -24,7 +24,8 @@ import numpy as np
 
 import gc
 from hermes import (calculate_serendipity, 
-                    calculate_novelty, 
+                    calculate_novelty,
+                    calculate_novelty_bias,
                     calculate_prediction_coverage)
 
 from sklearn.model_selection import train_test_split
@@ -36,6 +37,7 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 
 from colab_filtering_basline2 import get_als_model
+from bias1 import baseline_bias_model, get_tr_te_pr
 
 
 def get_create_context():
@@ -58,19 +60,13 @@ def create_test_train(train, test):
     return (X_train, X_test, y_train, y_test)
 
 
-if __name__ == '__main__':
 
-    # Create context
-    sc, sqlCtx = get_create_context()
-
-    # Get DF
+def get_als():
     frac = 0.001
     df, _, _ = load_pandas()
     print('Getting df')
     df = df.sample(frac=frac, random_state=0)
     print('Got df')
-
-    start = time()
 
     # Get predictions from ALS
     (y_predicted, model, rmse_train, rmse_test, coverage_train, coverage_test,
@@ -80,16 +76,74 @@ if __name__ == '__main__':
     X_train, X_test, y_train, y_test = create_test_train(train, test)
     
     predictions = y_predicted.select(['user_id', 'business_id', 'prediction'])
+    
+    return (X_train, X_test, y_train, y_test, predictions)
 
-    # Calculate metrics
-#    average_overall_serendipity, average_serendipity = calculate_serendipity(
-#        X_train, X_test, predictions, sqlCtx, rel_filter=1)
 
+def get_bias():
+    frac = 0.001
+    df, _, _ = load_pandas()
+    df = df.sample(frac=frac, random_state=0)
+    
+    (trainset, testset, predictions, dusers, ditems) = baseline_bias_model(df)
+    df_train, df_test, df_pred = get_tr_te_pr(trainset, testset, predictions, dusers, ditems)
+    
+    X_train = pandas_to_spark(df_train)
+    X_test = pandas_to_spark(df_test)
+    predictions = pandas_to_spark(df_pred)
+    
+    X_train, X_test, y_train, y_test = create_test_train(X_train, X_test)
+    
+    return (X_train, X_test, y_train, y_test, predictions)
+
+
+def get_metrics(X_train, X_test, y_train, y_test, predictions, name):
+    print(f'Metrics for {name} ------------------------------------------')
     avg_overall_novelty, avg_novelty = calculate_novelty(
         X_train, X_test, predictions, sqlCtx)
     
-    pred_coverage = calculate_prediction_coverage(y_test, predictions)
     
-    print(f"""{avg_overall_novelty} = overall, 
-              {avg_novelty}=avg, 
-              {pred_coverage}=coverage""")
+    avg_overall_serendipity, avg_serendipity = calculate_serendipity(
+        X_train, X_test, predictions, sqlCtx, rel_filter=1)
+    
+    
+    # # pred_coverage = calculate_prediction_coverage(y_test, predictions)
+    
+    print(f"""{avg_overall_novelty} = avg_overall_novelty, 
+              {avg_novelty}=avg_novelty, 
+              {avg_overall_serendipity}=avg_overall_serendipity,
+              {avg_serendipity} = avg_serendipity,
+              
+              """)
+              
+    # print(f"""{avg_overall_novelty} = avg_overall_novelty, 
+    #           {avg_novelty}=avg_novelty, 
+              
+    #           """)
+              
+    print(f"""{avg_overall_serendipity} = avg_overall_serendipity, 
+     {avg_serendipity}=avg_serendipity, 
+     
+     """)
+     
+
+
+
+if __name__ == '__main__':
+
+    # Create context
+    sc, sqlCtx = get_create_context()
+    
+    (X_train, X_test, y_train, y_test, predictions) = get_bias()
+    get_metrics(X_train, X_test, y_train, y_test, predictions, 'BASELINE')
+    
+    print("BASELINE done")
+    
+    
+    (X_train, X_test, y_train, y_test, predictions) = get_als()
+    get_metrics(X_train, X_test, y_train, y_test, predictions, 'COLLABORATIVE FILTERING')
+    
+    print("COLLABORATIVE done")
+    
+    
+    

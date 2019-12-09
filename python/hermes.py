@@ -430,7 +430,7 @@ def calculate_prediction_coverage(y_actual, y_predicted):
       
     
     breakpoint()
-      
+      # 
     num_found_predictions = predictionsAndRatings.count()
     num_test_set = y_actual.count()
 
@@ -467,7 +467,8 @@ def calculate_serendipity(y_train, y_test, y_predicted, sqlCtx, rel_filter=1):
     full_corpus = y_train.union(y_test).rdd.map(
         lambda u_i_r3: (u_i_r3[0], u_i_r3[1], float(u_i_r3[2])))
 
-    fields = [
+    try:
+        fields = [
         StructField("user_id", LongType(), True),
         StructField("business_id", LongType(), True),
         StructField("rating", FloatType(), True)
@@ -475,8 +476,20 @@ def calculate_serendipity(y_train, y_test, y_predicted, sqlCtx, rel_filter=1):
     
 #    breakpoint()
     
-    schema = StructType(fields)
-    schema_rate = sqlCtx.createDataFrame(full_corpus, schema)
+        schema = StructType(fields)
+        schema_rate = sqlCtx.createDataFrame(full_corpus, schema)
+    except:
+        fields = [
+        StructField("user_id", StringType(), True),
+        StructField("business_id", StringType(), True),
+        StructField("rating", FloatType(), True)
+    ]
+    
+#    breakpoint()
+    
+        schema = StructType(fields)
+        schema_rate = sqlCtx.createDataFrame(full_corpus, schema)
+        
     schema_rate.registerTempTable("ratings")
 
 #    breakpoint()
@@ -504,14 +517,24 @@ def calculate_serendipity(y_train, y_test, y_predicted, sqlCtx, rel_filter=1):
     #    fields = [StructField("user", LongType(),True), StructField("item", LongType(), True),
     #          StructField("prediction", FloatType(), True), StructField("actual", FloatType(), True) ]
     print(f'Reached here 2')
-    schema = StructType([
+    try:
+        schema = StructType([
         StructField("user_id", LongType(), True),
         StructField("business_id", LongType(), True),
         StructField("prediction", FloatType(), True),
         StructField("rating", FloatType(), True)
     ])
-    schema_preds = sqlCtx.createDataFrame(temp, schema)
-    schema_preds.registerTempTable("preds")
+        schema_preds = sqlCtx.createDataFrame(temp, schema)
+        schema_preds.registerTempTable("preds")
+    except:
+        schema = StructType([
+        StructField("user_id", StringType(), True),
+        StructField("business_id", StringType(), True),
+        StructField("prediction", FloatType(), True),
+        StructField("rating", FloatType(), True)
+    ])
+        schema_preds = sqlCtx.createDataFrame(temp, schema)
+        schema_preds.registerTempTable("preds")
 
     #determine the ranking of predictions by each user
     user_ranking = sqlCtx.sql("select user_id, business_id, prediction, row_number() \
@@ -562,7 +585,7 @@ def calculate_serendipity(y_train, y_test, y_predicted, sqlCtx, rel_filter=1):
     return (average_overall_serendipity, average_serendipity)
 
 
-def calculate_novelty(y_train, y_test, y_predicted, sqlCtx):
+def calculate_novelty(y_train, y_test, y_predicted, sqlCtx, type_user_item='long'):
     """
     Novelty measures how new or unknown recommendations are to a user
     An individual item's novelty can be calculated as the log of the popularity of the item
@@ -582,8 +605,66 @@ def calculate_novelty(y_train, y_test, y_predicted, sqlCtx):
     full_corpus = y_train.union(y_test).rdd.map(
         lambda u_i_r6: (u_i_r6[0], u_i_r6[1], float(u_i_r6[2])))
 
-    fields = [StructField("user", LongType(),True),StructField("item", LongType(), True),\
+        
+    if type_user_item == 'long':
+        fields = [StructField("user", LongType(),True),StructField("item", LongType(), True),\
           StructField("rating", FloatType(), True) ]
+    if type_user_item == 'string':
+        fields = [StructField("user", StringType(),True),StructField("item", StringType(), True),\
+          StructField("rating", FloatType(), True) ]
+    schema = StructType(fields)
+    schema_rate = sqlCtx.createDataFrame(full_corpus, schema)
+    schema_rate.registerTempTable("ratings")
+
+    item_ranking = sqlCtx.sql(
+        "select item, avg(rating) as avg_rate, row_number() over(ORDER BY avg(rating) desc) as rank \
+        from ratings group by item order by avg_rate desc")
+
+    # breakpoint()
+    n = item_ranking.count()
+    item_ranking_with_nov = item_ranking.rdd.map(
+        lambda item_id_avg_rate_rank7: (item_id_avg_rate_rank7[0], (
+            item_id_avg_rate_rank7[1], item_id_avg_rate_rank7[2],
+            log(max(prob_by_rank(item_id_avg_rate_rank7[2], n), 1e-100), 2))))
+    
+#    breakpoint()
+
+    user_novelty = y_predicted.rdd.keyBy(lambda u_i_p8: u_i_p8[1]).join(item_ranking_with_nov).map(lambda i_u_p_pop: (i_u_p_pop[1][0][0], i_u_p_pop[1][1][2]))\
+        .groupBy(lambda user_pop: user_pop[0]).map(lambda user_user_item_probs:(np.mean(list(user_user_item_probs[1]), axis=0)[1])).collect()
+
+    all_novelty = y_predicted.rdd.keyBy(lambda u_i_p9: u_i_p9[1]).join(
+        item_ranking_with_nov).map(lambda i_u_p_pop10:
+                                       (i_u_p_pop10[1][1][2])).collect()
+    # breakpoint()
+    avg_overall_novelty = float(np.mean(all_novelty))
+
+    avg_novelty = float(np.mean(user_novelty))
+
+    return (avg_overall_novelty, avg_novelty)
+
+
+def calculate_novelty_bias(y_train, y_test, y_predicted, sqlCtx):
+    """
+    Novelty measures how new or unknown recommendations are to a user
+    An individual item's novelty can be calculated as the log of the popularity of the item
+    A user's overal novelty is then the sum of the novelty of all items
+    Method derived from 'Auraslist: Introducing Serendipity into Music Recommendation' by Y Zhang, D Seaghdha, D Quercia, and T Jambor
+    Args:
+        y_train: actual training ratings in the format of an array of [ (userId, itemId, actualRating) ].
+        y_test: actual testing ratings to test in the format of an array of [ (userId, itemId, actualRating) ].
+            y_train and y_test are necessary to determine the overall item ranking
+        y_predicted: predicted ratings in the format of a RDD of [ (userId, itemId, predictedRating) ].
+            It is important that this IS the sorted and cut prediction RDD
+    Returns:
+        avg_overall_novelty: the average amount of novelty over all users
+        avg_novelty: the average user's amount of novelty over their recommended items
+    """
+
+    full_corpus = y_train.union(y_test).rdd.map(
+        lambda u_i_r6: (u_i_r6[0], u_i_r6[1], float(u_i_r6[2])))
+
+    fields = [StructField("user", StringType(),True),StructField("item", StringType(), True),\
+      StructField("rating", FloatType(), True) ]
     schema = StructType(fields)
     schema_rate = sqlCtx.createDataFrame(full_corpus, schema)
     schema_rate.registerTempTable("ratings")
@@ -611,7 +692,6 @@ def calculate_novelty(y_train, y_test, y_predicted, sqlCtx):
     avg_novelty = float(np.mean(user_novelty))
 
     return (avg_overall_novelty, avg_novelty)
-
 
 def prob_by_rank(rank, n):
     """
