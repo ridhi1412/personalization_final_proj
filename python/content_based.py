@@ -41,8 +41,13 @@ def get_avg_vectors(df):
                    df.groupby('user_id')['user_id'].count()
     df_agg_rest = df.groupby('business_id')['review_vector'].sum() / \
                   df.groupby('business_id')['user_id'].count()
-    breakpoint()
-    return df_agg_users, df_agg_rest
+    
+    user_df = df_agg_users.reset_index()
+    business_df = df_agg_rest.reset_index()
+    user_map = dict(zip(user_df['user_id'].values, user_df['user_id'].index))
+    business_map = dict(zip(business_df['business_id'].values, business_df['business_id'].index))
+    
+    return (df_agg_users, df_agg_rest, user_map, business_map)
 
 
 def get_recommendations(user_mat, item_mat):
@@ -59,7 +64,7 @@ def get_sparse_mask(df):
 
 
 def find_recos(df):
-    df_agg_users, df_agg_rest = get_avg_vectors(df)
+    df_agg_users, df_agg_rest, _, _ = get_avg_vectors(df)
     users_mat = sp.vstack(df_agg_users)
     rest_mat = sp.vstack(df_agg_rest)
 
@@ -91,17 +96,28 @@ def get_top_n(recos, num_rec):
 
 #            break
         row = recos.getrow(row_num).toarray()[0].ravel()
-        top_ten_indicies[row_num] = row.argsort()[-num_rec:]
+        top_n_indicies[row_num] = row.argsort()[-num_rec:]
         return top_n_indicies
 
-if __name__ == '__main__':
+def get_tr_te_pr():
     frac = 0.001
     df, _, _ = load_pandas()
     print('Getting df')
     df = df.sample(frac=frac, random_state=0)
     print('Got df')
-    start = time()
+
     tfidf_vectorizer(df)
+    
+    (df_agg_users, df_agg_rest, user_map, business_map) = get_avg_vectors(df)
+
+    df_map = df.copy()
+    df_map['business_id'] = df_map['business_id'].map(business_map)
+    df_map['user_id'] = df_map['user_id'].map(user_map)
+    
+    df_map['business_id'] = df_map['business_id'].astype('int32')
+    df_map['user_id'] = df_map['user_id'].astype('int32')
+        
+    start = time()
 
     gc.collect()
 
@@ -110,8 +126,58 @@ if __name__ == '__main__':
     print('Grouping')
 
     recos = find_recos(df)
-    # num_rec = 3
-    # top_n_recs = get_top_n(recos=recos, num_rec=num_rec)
-#    breakpoint()
-# top_ten_values = row[row.argsort()[-10:]]
+    
+    recos_dense = recos.todense()
+    
+    df_map['prediction'] = None
+    
+    msk = np.random.rand(len(df_map)) < 0.8
+    df_train = df_map[msk][['user_id', 'business_id', 'rating']]
+    df_test = df_map[~msk][['user_id', 'business_id', 'rating']]
+    
+    for index, row in df_map.iterrows():
+        df_map.at[index, 'prediction'] = recos_dense[row['user_id'], row['business_id']]
+    
+    predictions = df_map[['user_id', 'business_id', 'rating', 'prediction']]
+    
+    predictions['prediction'] = predictions['prediction'].astype('float64')
+    
+    return (df_train, df_test, predictions)
 
+if __name__ == '__main__':
+    # frac = 0.001
+    # df, _, _ = load_pandas()
+    # print('Getting df')
+    # df = df.sample(frac=frac, random_state=0)
+    # print('Got df')
+
+    # tfidf_vectorizer(df)
+    
+    # (df_agg_users, df_agg_rest, user_map, business_map) = get_avg_vectors(df)
+
+    # df_map = df.copy()
+    # df_map['business_id'] = df_map['business_id'].map(business_map)
+    # df_map['user_id'] = df_map['user_id'].map(user_map)
+    
+    # df_map['business_id'] = df_map['business_id'].astype('int32')
+    # df_map['user_id'] = df_map['user_id'].astype('int32')
+        
+    # start = time()
+
+    # gc.collect()
+
+    # running_time = time() - start
+    # print(f'running time = {running_time}')
+    # print('Grouping')
+
+    # recos = find_recos(df)
+    
+    # recos_dense = recos.todense()
+    
+    # df_map['prediction'] = None
+    
+    # for index, row in df_map.iterrows():
+    #     df_map.at[index, 'prediction'] = recos_dense[row['user_id'], row['business_id']]
+    
+    
+    (df_train, df_test, predictions) = get_tr_te_pr()

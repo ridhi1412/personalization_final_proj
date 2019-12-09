@@ -38,6 +38,7 @@ from sklearn.model_selection import train_test_split
 
 from colab_filtering_basline2 import get_als_model
 from bias1 import baseline_bias_model, get_tr_te_pr
+from content_based import get_tr_te_pr as get_tr_te_pr_content 
 
 
 def get_create_context():
@@ -96,6 +97,16 @@ def get_bias():
     
     return (X_train, X_test, y_train, y_test, predictions)
 
+def get_content():
+    df_train, df_test, df_pred = get_tr_te_pr_content()
+    
+    X_train = pandas_to_spark(df_train)
+    X_test = pandas_to_spark(df_test)
+    predictions = pandas_to_spark(df_pred)
+    
+    X_train, X_test, y_train, y_test = create_test_train(X_train, X_test)
+    
+    return (X_train, X_test, y_train, y_test, predictions)
 
 def get_metrics(X_train, X_test, y_train, y_test, predictions, name):
     print(f'Metrics for {name} ------------------------------------------')
@@ -128,22 +139,27 @@ def get_metrics(X_train, X_test, y_train, y_test, predictions, name):
      
 
 
-
 if __name__ == '__main__':
 
     # Create context
     sc, sqlCtx = get_create_context()
     
-    (X_train, X_test, y_train, y_test, predictions) = get_bias()
-    get_metrics(X_train, X_test, y_train, y_test, predictions, 'BASELINE')
+    # (X_train, X_test, y_train, y_test, predictions) = get_bias()
+    # get_metrics(X_train, X_test, y_train, y_test, predictions, 'BASELINE')
     
-    print("BASELINE done")
+    # print("BASELINE done")
     
     
-    (X_train, X_test, y_train, y_test, predictions) = get_als()
-    get_metrics(X_train, X_test, y_train, y_test, predictions, 'COLLABORATIVE FILTERING')
+    # (X_train, X_test, y_train, y_test, predictions) = get_als()
+    # get_metrics(X_train, X_test, y_train, y_test, predictions, 'COLLABORATIVE FILTERING')
+
+    # print("COLLABORATIVE done")
+
+    (X_train, X_test, y_train, y_test, predictions) = get_content()
+    get_metrics(X_train, X_test, y_train, y_test, predictions, 'CONTENT')
     
-    print("COLLABORATIVE done")
+    print("CONTENT DONE")
+    
     
     
     

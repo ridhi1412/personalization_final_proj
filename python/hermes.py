@@ -87,23 +87,23 @@ import itertools
 
 # RMSE -----------------------------------------------------------------
 
-#def calculate_rmse_using_rdd(y_actual, y_predicted):
-#    """
-#    Determines the Root Mean Square Error of the predictions.
-#    Args:
-#        y_actual: actual ratings in the format of a RDD of [ (userId, itemId, actualRating) ]
-#        y_predicted: predicted ratings in the format of a RDD of [ (userId, itemId, predictedRating) ]
-#    Assumptions:
-#        y_actual and y_predicted are not in order.
-#    """
-#
-#    ratings_diff_sq = ( y_predicted.map(lambda x: ((x[0], x[1]), x[2])) ).join( y_actual.map(lambda x: ((x[0], x[1]), x[2])) ) \
-#        .map( lambda (_, (predictedRating, actualRating)): (predictedRating - actualRating) ** 2 ) \
-#
-#    sum_ratings_diff_sq = ratings_diff_sq.reduce(add)
-#    num = ratings_diff_sq.count()
-#
-#    return sqrt(sum_ratings_diff_sq / float(num))
+def calculate_rmse_using_rdd(y_actual, y_predicted):
+    """
+    Determines the Root Mean Square Error of the predictions.
+    Args:
+        y_actual: actual ratings in the format of a RDD of [ (userId, itemId, actualRating) ]
+        y_predicted: predicted ratings in the format of a RDD of [ (userId, itemId, predictedRating) ]
+    Assumptions:
+        y_actual and y_predicted are not in order.
+    """
+
+    ratings_diff_sq = (y_predicted.rdd.map(lambda x: ((x[0], x[1]), x[2])) ).join(y_actual.rdd.map(lambda x: ((x[0], x[1]), x[2])) ) \
+        .map( lambda (_, (predictedRating, actualRating)): (predictedRating - actualRating) ** 2 ) \
+
+    sum_ratings_diff_sq = ratings_diff_sq.reduce(add)
+    num = ratings_diff_sq.count()
+
+    return sqrt(sum_ratings_diff_sq / float(num))
 
 
 def calculate_rmse_using_array(y_actual, y_predicted):

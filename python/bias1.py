@@ -1,3 +1,4 @@
+ls
 import pandas as pd
 import numpy as np
 import surprise
@@ -36,7 +37,6 @@ def baseline_bias_model(df):
     predictions = algo.test(testset)
         
     
-
     print('\n')
     return (trainset, testset, predictions, dusers, ditems)
 
@@ -64,8 +64,7 @@ def get_tr_te_pr(train, test, preds, dusers, ditems):
     df_test['business_id'] = df_test['business_id'].map(ditems)
     df_test['user_id'] = df_test['user_id'].map(dusers)
     
-    
-    
+        
     df_pred = pd.DataFrame.from_records(preds, columns=['user_id', 'business_id', 'rating',
                                                         'prediction', 'isimpossible'])
     
@@ -84,7 +83,6 @@ def get_tr_te_pr(train, test, preds, dusers, ditems):
     df_pred.drop(columns=['isimpossible'], inplace=True)
     
     return (df_train, df_test, df_pred)
-
 
 
 if __name__ == '__main__':
