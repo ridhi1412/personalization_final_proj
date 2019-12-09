@@ -87,7 +87,8 @@ import itertools
 
 # RMSE -----------------------------------------------------------------
 
-def calculate_rmse_using_rdd(y_actual, y_predicted):
+
+def calculate_rmse_using_rdd(y_train, y_test, y_predicted):
     """
     Determines the Root Mean Square Error of the predictions.
     Args:
@@ -96,10 +97,20 @@ def calculate_rmse_using_rdd(y_actual, y_predicted):
     Assumptions:
         y_actual and y_predicted are not in order.
     """
+    
+    full_corpus = y_train.union(y_test).rdd.map(
+        lambda u_i_r3: (u_i_r3[0], u_i_r3[1], float(u_i_r3[2])))
+    
+    ratings_diff_sq = y_predicted.rdd.map(lambda x: ((x[0], x[1]), x[2])).join(
+        full_corpus.map(lambda x: ((x[0], x[1]), x[2]))).map(
+            lambda __predictedRating_actualRating1:
+            (__predictedRating_actualRating1[1][0] -
+             __predictedRating_actualRating1[1][1])**2)
 
-    ratings_diff_sq = (y_predicted.rdd.map(lambda x: ((x[0], x[1]), x[2])) ).join(y_actual.rdd.map(lambda x: ((x[0], x[1]), x[2])) ) \
-        .map( lambda (_, (predictedRating, actualRating)): (predictedRating - actualRating) ** 2 ) \
-
+                
+    #TODO figure out why not same shape
+    # breakpoint()
+                
     sum_ratings_diff_sq = ratings_diff_sq.reduce(add)
     num = ratings_diff_sq.count()
 
@@ -135,6 +146,7 @@ def calculate_mae_using_rdd(y_actual, y_predicted):
     ratings_diff = ( y_predicted.map(lambda x: ((x[0], x[1]), x[2])) ).join( y_actual.map(lambda x: ((x[0], x[1]), x[2])) ) \
         .map( lambda __predictedRating_actualRating: abs(__predictedRating_actualRating[1][0] - __predictedRating_actualRating[1][1]) ) \
 
+    
     sum_ratings_diff = ratings_diff.reduce(add)
     num = ratings_diff.count()
 
@@ -427,10 +439,8 @@ def calculate_prediction_coverage(y_actual, y_predicted):
 
     predictionsAndRatings = y_predicted.rdd.map(lambda x: ((x[0], x[1]), x[2])) \
       .join(y_actual.rdd.map(lambda x: ((x[0], x[1]), x[2])))
-      
-    
-    breakpoint()
-      # 
+
+    #
     num_found_predictions = predictionsAndRatings.count()
     num_test_set = y_actual.count()
 
@@ -469,30 +479,30 @@ def calculate_serendipity(y_train, y_test, y_predicted, sqlCtx, rel_filter=1):
 
     try:
         fields = [
-        StructField("user_id", LongType(), True),
-        StructField("business_id", LongType(), True),
-        StructField("rating", FloatType(), True)
-    ]
-    
-#    breakpoint()
-    
+            StructField("user_id", LongType(), True),
+            StructField("business_id", LongType(), True),
+            StructField("rating", FloatType(), True)
+        ]
+
+        #    breakpoint()
+
         schema = StructType(fields)
         schema_rate = sqlCtx.createDataFrame(full_corpus, schema)
     except:
         fields = [
-        StructField("user_id", StringType(), True),
-        StructField("business_id", StringType(), True),
-        StructField("rating", FloatType(), True)
-    ]
-    
-#    breakpoint()
-    
+            StructField("user_id", StringType(), True),
+            StructField("business_id", StringType(), True),
+            StructField("rating", FloatType(), True)
+        ]
+
+        #    breakpoint()
+
         schema = StructType(fields)
         schema_rate = sqlCtx.createDataFrame(full_corpus, schema)
-        
+
     schema_rate.registerTempTable("ratings")
 
-#    breakpoint()
+    #    breakpoint()
     item_ranking = sqlCtx.sql(
         "select business_id, avg(rating) as avg_rate, row_number() over(ORDER BY avg(rating) desc) as rank \
         from ratings group by business_id order by avg_rate desc")
@@ -519,32 +529,34 @@ def calculate_serendipity(y_train, y_test, y_predicted, sqlCtx, rel_filter=1):
     print(f'Reached here 2')
     try:
         schema = StructType([
-        StructField("user_id", LongType(), True),
-        StructField("business_id", LongType(), True),
-        StructField("prediction", FloatType(), True),
-        StructField("rating", FloatType(), True)
-    ])
+            StructField("user_id", LongType(), True),
+            StructField("business_id", LongType(), True),
+            StructField("prediction", FloatType(), True),
+            StructField("rating", FloatType(), True)
+        ])
         schema_preds = sqlCtx.createDataFrame(temp, schema)
         schema_preds.registerTempTable("preds")
     except:
         schema = StructType([
-        StructField("user_id", StringType(), True),
-        StructField("business_id", StringType(), True),
-        StructField("prediction", FloatType(), True),
-        StructField("rating", FloatType(), True)
-    ])
+            StructField("user_id", StringType(), True),
+            StructField("business_id", StringType(), True),
+            StructField("prediction", FloatType(), True),
+            StructField("rating", FloatType(), True)
+        ])
         schema_preds = sqlCtx.createDataFrame(temp, schema)
         schema_preds.registerTempTable("preds")
 
     #determine the ranking of predictions by each user
-    user_ranking = sqlCtx.sql("select user_id, business_id, prediction, row_number() \
+    user_ranking = sqlCtx.sql(
+        "select user_id, business_id, prediction, row_number() \
         over(Partition by user_id ORDER BY prediction desc) as rank \
         from preds order by user_id, prediction desc")
     user_ranking.registerTempTable("user_rankings")
 
     #find the number of predicted items by user
     user_counts = sqlCtx.sql(
-        "select user_id, count(business_id) as num_found from preds group by user_id")
+        "select user_id, count(business_id) as num_found from preds group by user_id"
+    )
     user_counts.registerTempTable("user_counts")
 
     #use the number of predicted items and item rank to determine the probability an item is predicted
@@ -564,7 +576,6 @@ def calculate_serendipity(y_train, y_test, y_predicted, sqlCtx, rel_filter=1):
     sumCount = data.combineByKey(lambda value: (value, 1), lambda x, value:
                                  (x[0] + value, x[1] + 1), lambda x, y:
                                  (x[0] + y[0], x[1] + y[1]))
-        
 
     serendipityByUser = sumCount.map(lambda label_value_sum_count: (
         label_value_sum_count[0], label_value_sum_count[1][0] / float(
@@ -576,7 +587,7 @@ def calculate_serendipity(y_train, y_test, y_predicted, sqlCtx, rel_filter=1):
     average_serendipity = serendipityByUser.map(
         lambda user_serendipity: user_serendipity[1]).reduce(add) / num
 
-        #alternatively we could average not by user first, so heavier users will be more influential
+    #alternatively we could average not by user first, so heavier users will be more influential
     #for now we shall return both
     average_overall_serendipity = data.map(
         lambda user_serendipity1: user_serendipity1[1]).reduce(add) / float(
@@ -585,7 +596,11 @@ def calculate_serendipity(y_train, y_test, y_predicted, sqlCtx, rel_filter=1):
     return (average_overall_serendipity, average_serendipity)
 
 
-def calculate_novelty(y_train, y_test, y_predicted, sqlCtx, type_user_item='long'):
+def calculate_novelty(y_train,
+                      y_test,
+                      y_predicted,
+                      sqlCtx,
+                      type_user_item='long'):
     """
     Novelty measures how new or unknown recommendations are to a user
     An individual item's novelty can be calculated as the log of the popularity of the item
@@ -605,7 +620,6 @@ def calculate_novelty(y_train, y_test, y_predicted, sqlCtx, type_user_item='long
     full_corpus = y_train.union(y_test).rdd.map(
         lambda u_i_r6: (u_i_r6[0], u_i_r6[1], float(u_i_r6[2])))
 
-        
     if type_user_item == 'long':
         fields = [StructField("user", LongType(),True),StructField("item", LongType(), True),\
           StructField("rating", FloatType(), True) ]
@@ -626,15 +640,15 @@ def calculate_novelty(y_train, y_test, y_predicted, sqlCtx, type_user_item='long
         lambda item_id_avg_rate_rank7: (item_id_avg_rate_rank7[0], (
             item_id_avg_rate_rank7[1], item_id_avg_rate_rank7[2],
             log(max(prob_by_rank(item_id_avg_rate_rank7[2], n), 1e-100), 2))))
-    
-#    breakpoint()
+
+    #    breakpoint()
 
     user_novelty = y_predicted.rdd.keyBy(lambda u_i_p8: u_i_p8[1]).join(item_ranking_with_nov).map(lambda i_u_p_pop: (i_u_p_pop[1][0][0], i_u_p_pop[1][1][2]))\
         .groupBy(lambda user_pop: user_pop[0]).map(lambda user_user_item_probs:(np.mean(list(user_user_item_probs[1]), axis=0)[1])).collect()
 
     all_novelty = y_predicted.rdd.keyBy(lambda u_i_p9: u_i_p9[1]).join(
         item_ranking_with_nov).map(lambda i_u_p_pop10:
-                                       (i_u_p_pop10[1][1][2])).collect()
+                                   (i_u_p_pop10[1][1][2])).collect()
     # breakpoint()
     avg_overall_novelty = float(np.mean(all_novelty))
 
@@ -678,20 +692,21 @@ def calculate_novelty_bias(y_train, y_test, y_predicted, sqlCtx):
         lambda item_id_avg_rate_rank7: (item_id_avg_rate_rank7[0], (
             item_id_avg_rate_rank7[1], item_id_avg_rate_rank7[2],
             log(max(prob_by_rank(item_id_avg_rate_rank7[2], n), 1e-100), 2))))
-    
-#    breakpoint()
+
+    #    breakpoint()
 
     user_novelty = y_predicted.rdd.keyBy(lambda u_i_p8: u_i_p8[1]).join(item_ranking_with_nov).map(lambda i_u_p_pop: (i_u_p_pop[1][0][0], i_u_p_pop[1][1][2]))\
         .groupBy(lambda user_pop: user_pop[0]).map(lambda user_user_item_probs:(np.mean(list(user_user_item_probs[1]), axis=0)[1])).collect()
 
     all_novelty = y_predicted.rdd.keyBy(lambda u_i_p9: u_i_p9[1]).join(
         item_ranking_with_nov).map(lambda i_u_p_pop10:
-                                       (i_u_p_pop10[1][1][2])).collect()
+                                   (i_u_p_pop10[1][1][2])).collect()
     avg_overall_novelty = float(np.mean(all_novelty))
 
     avg_novelty = float(np.mean(user_novelty))
 
     return (avg_overall_novelty, avg_novelty)
+
 
 def prob_by_rank(rank, n):
     """

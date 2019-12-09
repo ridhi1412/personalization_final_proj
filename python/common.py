@@ -7,7 +7,6 @@ Created on Tue Dec  3 21:05:32 2019
 import os
 import pandas as pd
 
-
 import getpass
 user = getpass.getuser()
 
@@ -28,7 +27,7 @@ if user == 'Sheetal':
     DIRPATH = r'../'
 if user == 'aksmi':
     DIRPATH = r'E:\yelp'
-    
+
 EXCEL_PATH = os.path.join(DIRPATH, 'data')
 CACHE_PATH = os.path.join(DIRPATH, 'cache')
 

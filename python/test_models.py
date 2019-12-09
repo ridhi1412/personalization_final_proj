@@ -9,7 +9,6 @@ Created on Sat Dec  7 03:20:02 2019
 #findspark.init()
 from common import CACHE_PATH, EXCEL_PATH
 
-
 from pyspark import SparkContext
 from pyspark.ml.evaluation import RegressionEvaluator
 from pyspark.ml.recommendation import ALS
@@ -23,10 +22,9 @@ import scipy.sparse as sp
 import numpy as np
 
 import gc
-from hermes import (calculate_serendipity, 
-                    calculate_novelty,
-                    calculate_novelty_bias,
-                    calculate_prediction_coverage)
+from hermes import (calculate_serendipity, calculate_novelty,
+                    calculate_novelty_bias, calculate_prediction_coverage,
+                    calculate_rmse_using_rdd)
 
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
@@ -38,7 +36,7 @@ from sklearn.model_selection import train_test_split
 
 from colab_filtering_basline2 import get_als_model
 from bias1 import baseline_bias_model, get_tr_te_pr
-from content_based import get_tr_te_pr as get_tr_te_pr_content 
+from content_based import get_tr_te_pr as get_tr_te_pr_content
 
 
 def get_create_context():
@@ -61,7 +59,6 @@ def create_test_train(train, test):
     return (X_train, X_test, y_train, y_test)
 
 
-
 def get_als():
     frac = 0.001
     df, _, _ = load_pandas()
@@ -73,11 +70,11 @@ def get_als():
     (y_predicted, model, rmse_train, rmse_test, coverage_train, coverage_test,
      running_time, train, test) = get_als_model(df, 5)
 
-#         Get train test
+    #         Get train test
     X_train, X_test, y_train, y_test = create_test_train(train, test)
-    
+
     predictions = y_predicted.select(['user_id', 'business_id', 'prediction'])
-    
+
     return (X_train, X_test, y_train, y_test, predictions)
 
 
@@ -85,81 +82,76 @@ def get_bias():
     frac = 0.001
     df, _, _ = load_pandas()
     df = df.sample(frac=frac, random_state=0)
-    
+
     (trainset, testset, predictions, dusers, ditems) = baseline_bias_model(df)
-    df_train, df_test, df_pred = get_tr_te_pr(trainset, testset, predictions, dusers, ditems)
-    
+    df_train, df_test, df_pred = get_tr_te_pr(trainset, testset, predictions,
+                                              dusers, ditems)
+
     X_train = pandas_to_spark(df_train)
     X_test = pandas_to_spark(df_test)
     predictions = pandas_to_spark(df_pred)
-    
+
     X_train, X_test, y_train, y_test = create_test_train(X_train, X_test)
-    
+
     return (X_train, X_test, y_train, y_test, predictions)
+
 
 def get_content():
     df_train, df_test, df_pred = get_tr_te_pr_content()
-    
+
     X_train = pandas_to_spark(df_train)
     X_test = pandas_to_spark(df_test)
     predictions = pandas_to_spark(df_pred)
-    
+
     X_train, X_test, y_train, y_test = create_test_train(X_train, X_test)
-    
+
     return (X_train, X_test, y_train, y_test, predictions)
 
+
 def get_metrics(X_train, X_test, y_train, y_test, predictions, name):
-    print(f'Metrics for {name} ------------------------------------------')
+    # print(f'Metrics for {name} ------------------------------------------')
+    
+    predictions = predictions.drop('rating')
+    
     avg_overall_novelty, avg_novelty = calculate_novelty(
         X_train, X_test, predictions, sqlCtx)
-    
-    
+
     avg_overall_serendipity, avg_serendipity = calculate_serendipity(
         X_train, X_test, predictions, sqlCtx, rel_filter=1)
     
-    
+    rmse = calculate_rmse_using_rdd(X_train, X_test, predictions)
+
+
     # # pred_coverage = calculate_prediction_coverage(y_test, predictions)
-    
-    print(f"""{avg_overall_novelty} = avg_overall_novelty, 
-              {avg_novelty}=avg_novelty, 
-              {avg_overall_serendipity}=avg_overall_serendipity,
-              {avg_serendipity} = avg_serendipity,
+
+    print(f'avg_overall_novelty     = {avg_overall_novelty:.2f}')
+    print(f'avg_novelty             = {avg_novelty:.2f}')
+    print(f'avg_overall_serendipity = {avg_overall_serendipity:.2f}')
+    print(f'avg_serendipity         = {avg_serendipity:.2f}')
+    print(f'rmse                    = {rmse:.2f}')
               
-              """)
-              
-    # print(f"""{avg_overall_novelty} = avg_overall_novelty, 
-    #           {avg_novelty}=avg_novelty, 
-              
+    # print(f"""{avg_overall_novelty} = avg_overall_novelty,
+    #           {avg_novelty}=avg_novelty,
+
     #           """)
-              
-    print(f"""{avg_overall_serendipity} = avg_overall_serendipity, 
-     {avg_serendipity}=avg_serendipity, 
-     
-     """)
-     
 
 
 if __name__ == '__main__':
 
     # Create context
     sc, sqlCtx = get_create_context()
-    
-    # (X_train, X_test, y_train, y_test, predictions) = get_bias()
-    # get_metrics(X_train, X_test, y_train, y_test, predictions, 'BASELINE')
-    
-    # print("BASELINE done")
-    
-    
-    # (X_train, X_test, y_train, y_test, predictions) = get_als()
-    # get_metrics(X_train, X_test, y_train, y_test, predictions, 'COLLABORATIVE FILTERING')
 
-    # print("COLLABORATIVE done")
+    (X_train, X_test, y_train, y_test, predictions) = get_bias()
+    get_metrics(X_train, X_test, y_train, y_test, predictions, 'BASELINE')
+
+    print("BASELINE done")
+
+    (X_train, X_test, y_train, y_test, predictions) = get_als()
+    get_metrics(X_train, X_test, y_train, y_test, predictions, 'COLLABORATIVE FILTERING')
+
+    print("COLLABORATIVE done")
 
     (X_train, X_test, y_train, y_test, predictions) = get_content()
     get_metrics(X_train, X_test, y_train, y_test, predictions, 'CONTENT')
-    
+
     print("CONTENT DONE")
-    
-    
-    
-    
