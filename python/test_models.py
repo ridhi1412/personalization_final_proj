@@ -5,8 +5,12 @@ Created on Sat Dec  7 03:20:02 2019
 @author: aksmi
 """
 
-#import findspark
-#findspark.init()
+import getpass
+user = getpass.getuser()
+
+if user == 'aksmi':
+    import findspark
+    findspark.init()
 
 from pyspark import SparkContext
 from pyspark.ml.evaluation import RegressionEvaluator
@@ -51,9 +55,11 @@ except:
     from python.DL_Baseline import DL_Model
 
     from python.hermes import (calculate_serendipity, calculate_novelty,
-                        calculate_novelty_bias, calculate_prediction_coverage,
-                        calculate_rmse_using_rdd)
-    
+                               calculate_novelty_bias,
+                               calculate_prediction_coverage,
+                               calculate_rmse_using_rdd)
+
+
 def get_create_context():
     sc = SparkContext.getOrCreate()  # else get multiple contexts error
     sqlCtx = SQLContext(sc)
@@ -82,8 +88,9 @@ def get_small_sample_df(frac=0.01, prolific=10):
     print('Got df')
     return df
 
+
 def get_als():
-    
+
     df = get_small_sample_df()
 
     # Get predictions from ALS
@@ -116,7 +123,7 @@ def get_bias():
 
 def get_dl():
     df = get_small_sample_df()
-    
+
     X_train, X_test, predictions = DL_Model(df, df, None)
 
     X_train, X_test, y_train, y_test = create_test_train(X_train, X_test)
@@ -124,10 +131,10 @@ def get_dl():
     return (X_train, X_test, y_train, y_test, predictions)
 
 
-def get_content():
+def get_content(ngram_range, sublinear_tf):
     df = get_small_sample_df()
 
-    (df_train, df_test, df_pred) = content_based(df)
+    (df_train, df_test, df_pred) = content_based(df, ngram_range, sublinear_tf)
 
     X_train = pandas_to_spark(df_train)
     X_test = pandas_to_spark(df_test)
@@ -138,20 +145,19 @@ def get_content():
     return (X_train, X_test, y_train, y_test, predictions)
 
 
-def get_metrics(X_train, X_test, y_train, y_test, predictions, name, 
+def get_metrics(X_train, X_test, y_train, y_test, predictions, name,
                 metrics_dict):
     # print(f'Metrics for {name} ------------------------------------------')
-    
+
     predictions = predictions.drop('rating')
-    
+
     avg_overall_novelty, avg_novelty = calculate_novelty(
         X_train, X_test, predictions, sqlCtx)
 
     avg_overall_serendipity, avg_serendipity = calculate_serendipity(
         X_train, X_test, predictions, sqlCtx, rel_filter=1)
-    
-    rmse = calculate_rmse_using_rdd(X_train, X_test, predictions)
 
+    rmse = calculate_rmse_using_rdd(X_train, X_test, predictions)
 
     # # pred_coverage = calculate_prediction_coverage(y_test, predictions)
 
@@ -161,63 +167,83 @@ def get_metrics(X_train, X_test, y_train, y_test, predictions, name,
     metrics_dict[name]['avg_overall_serendipity'] = avg_overall_serendipity
     metrics_dict[name]['avg_serendipity'] = avg_serendipity
     metrics_dict[name]['rmse'] = rmse
-    
+
     print(f'avg_overall_novelty     = {avg_overall_novelty:.2f}')
     print(f'avg_novelty             = {avg_novelty:.2f}')
     print(f'avg_overall_serendipity = {avg_overall_serendipity:.2f}')
     print(f'avg_serendipity         = {avg_serendipity:.2f}')
     print(f'rmse                    = {rmse:.2f}')
-              
+
     # print(f"""{avg_overall_novelty} = avg_overall_novelty,
     #           {avg_novelty}=avg_novelty,
 
     #           """)
 
+
+def param_tune_content(metrics_dict, ngram_range_list=[(1, 1), (1, 2),
+                                                       (1, 3)]):
+
+    for ngram_range in ngram_range_list:
+        (X_train, X_test, y_train, y_test,
+         predictions) = get_content(ngram_range=ngram_range,
+                                    sublinear_tf=False)
+        get_metrics(X_train, X_test, y_train, y_test, predictions,
+                    f'ngram_range = {ngram_range}', metrics_dict)
+
+    for sublinear_tf in [True, False]:
+        (X_train, X_test, y_train, y_test,
+         predictions) = get_content(ngram_range=(1, 1),
+                                    sublinear_tf=sublinear_tf)
+        get_metrics(X_train, X_test, y_train, y_test, predictions,
+                    f'sublinear_tf = {sublinear_tf}', metrics_dict)
+
+
 def load_metrics_cache(use_cache=True):
     cache_path = os.path.join(CACHE_PATH, f'metrics.msgpack')
-    
+
     if use_cache and os.path.exists(cache_path):
         print(f'Loading from {cache_path}')
         metrics_df = pd.read_msgpack(cache_path)
         print(f'Loaded from {cache_path}')
-    else:    
+    else:
         metrics_dict = dict()
-    
+
         (X_train, X_test, y_train, y_test, predictions) = get_bias()
-        get_metrics(X_train, X_test, y_train, y_test, predictions, 'BASELINE', 
+        get_metrics(X_train, X_test, y_train, y_test, predictions, 'BASELINE',
                     metrics_dict)
-    
+
         print("BASELINE done")
-    
+
         (X_train, X_test, y_train, y_test, predictions) = get_als()
-        get_metrics(X_train, X_test, y_train, y_test, predictions, 
+        get_metrics(X_train, X_test, y_train, y_test, predictions,
                     'COLLABORATIVE FILTERING', metrics_dict)
-    
+
         print("COLLABORATIVE done")
-    
+
         (X_train, X_test, y_train, y_test, predictions) = get_content()
-        get_metrics(X_train, X_test, y_train, y_test, predictions, 'CONTENT', 
+        get_metrics(X_train, X_test, y_train, y_test, predictions, 'CONTENT',
                     metrics_dict)
-    
+
         print("CONTENT DONE")
-        
+
         (X_train, X_test, y_train, y_test, predictions) = get_dl()
-        get_metrics(X_train, X_test, y_train, y_test, predictions, 'DL', 
+        get_metrics(X_train, X_test, y_train, y_test, predictions, 'DL',
                     metrics_dict)
-        
+
         metrics_df = pd.DataFrame(metrics_dict).T
-        
+
         print("DL DONE")
 
         pd.to_msgpack(cache_path, metrics_df)
         print(f"Dumping to {cache_path}")
-        
+
     return metrics_df
-        
+
 
 if __name__ == '__main__':
     # Create context
     sc, sqlCtx = get_create_context()
 
-    metrics_df = load_metrics_cache(use_cache=False)
-
+    # metrics_df = load_metrics_cache(use_cache=False)
+    metrics_dict = {}
+    param_tune_content(metrics_dict, ngram_range_list=[(1, 1), (1, 2), (1, 3)])

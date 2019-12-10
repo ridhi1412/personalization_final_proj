@@ -97,20 +97,19 @@ def calculate_rmse_using_rdd(y_train, y_test, y_predicted):
     Assumptions:
         y_actual and y_predicted are not in order.
     """
-    
+
     full_corpus = y_train.union(y_test).rdd.map(
         lambda u_i_r3: (u_i_r3[0], u_i_r3[1], float(u_i_r3[2])))
-    
+
     ratings_diff_sq = y_predicted.rdd.map(lambda x: ((x[0], x[1]), x[2])).join(
         full_corpus.map(lambda x: ((x[0], x[1]), x[2]))).map(
             lambda __predictedRating_actualRating1:
             (__predictedRating_actualRating1[1][0] -
              __predictedRating_actualRating1[1][1])**2)
 
-                
     #TODO figure out why not same shape
     # breakpoint()
-                
+
     sum_ratings_diff_sq = ratings_diff_sq.reduce(add)
     num = ratings_diff_sq.count()
 
@@ -146,7 +145,6 @@ def calculate_mae_using_rdd(y_actual, y_predicted):
     ratings_diff = ( y_predicted.map(lambda x: ((x[0], x[1]), x[2])) ).join( y_actual.map(lambda x: ((x[0], x[1]), x[2])) ) \
         .map( lambda __predictedRating_actualRating: abs(__predictedRating_actualRating[1][0] - __predictedRating_actualRating[1][1]) ) \
 
-    
     sum_ratings_diff = ratings_diff.reduce(add)
     num = ratings_diff.count()
 

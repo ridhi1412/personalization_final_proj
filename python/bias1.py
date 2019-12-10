@@ -10,8 +10,9 @@ from surprise import BaselineOnly
 try:
     from common import CACHE_PATH, EXCEL_PATH, load_pandas, pandas_to_spark
 except:
-    from python.common import (CACHE_PATH, EXCEL_PATH, 
-                               load_pandas, pandas_to_spark)
+    from python.common import (CACHE_PATH, EXCEL_PATH, load_pandas,
+                               pandas_to_spark)
+
 
 def baseline_bias_model(df):
     """
@@ -29,7 +30,6 @@ def baseline_bias_model(df):
     dusers = ts._raw2inner_id_users
     ditems = ts._raw2inner_id_items
 
-    # breakpoint()
     trainset, testset = train_test_split(data)
 
     algo = BaselineOnly()

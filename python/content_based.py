@@ -1,9 +1,7 @@
-
 from pyspark.ml.evaluation import RegressionEvaluator
 from pyspark.ml.recommendation import ALS
 from pyspark.sql.functions import explode
 from time import time
-
 
 import scipy.sparse as sp
 import numpy as np
@@ -15,6 +13,8 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import linear_kernel
 
+# from test_models import get_metrics
+
 try:
     from common import CACHE_PATH, EXCEL_PATH
     from common import load_pandas, pandas_to_spark
@@ -22,12 +22,15 @@ except:
     from python.common import CACHE_PATH, EXCEL_PATH
     from python.common import load_pandas, pandas_to_spark
 
-def tfidf_vectorizer(df):
+
+def tfidf_vectorizer(df, ngram_range, sublinear_tf):
     # https://stackoverflow.com/questions/45981037/sklearn-tf-idf-to-drop-numbers
     kwargs = {
         'lowercase': True,
         'stop_words': 'english',
-        'token_pattern': u'(?ui)\\b\\w*[a-z]+\\w*\\b'
+        'token_pattern': u'(?ui)\\b\\w*[a-z]+\\w*\\b',
+        'sublinear_tf': sublinear_tf,
+        'ngram_range': ngram_range
     }
     reviews = df['text'].values
     print('converted to values')
@@ -103,8 +106,11 @@ def get_top_n(recos, num_rec):
         top_n_indicies[row_num] = row.argsort()[-num_rec:]
         return top_n_indicies
 
-def content_based(df):
-    tfidf_vectorizer(df)
+
+def content_based(df, ngram_range=[(1, 1), (1, 2), (1, 3)],
+                  sublinear_tf=False):
+
+    tfidf_vectorizer(df, ngram_range=ngram_range, sublinear_tf=sublinear_tf)
 
     (df_agg_users, df_agg_rest, user_map, business_map) = get_avg_vectors(df)
 
@@ -140,11 +146,12 @@ def content_based(df):
     predictions = df_map[['user_id', 'business_id', 'rating', 'prediction']]
 
     predictions['prediction'] = predictions['prediction'].astype('float64')
-    
+
     return (df_train, df_test, predictions)
 
 
 if __name__ == '__main__':
+    pass
     # frac = 0.001
     # df, _, _ = load_pandas()
     # print('Getting df')
@@ -179,4 +186,4 @@ if __name__ == '__main__':
     # for index, row in df_map.iterrows():
     #     df_map.at[index, 'prediction'] = recos_dense[row['user_id'], row['business_id']]
 
-    (df_train, df_test, predictions) = get_tr_te_pr()
+    # (df_train, df_test, predictions) = get_tr_te_pr()
