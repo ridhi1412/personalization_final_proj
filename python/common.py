@@ -6,7 +6,7 @@ Created on Tue Dec  3 21:05:32 2019
 """
 import os
 import pandas as pd
-
+from sklearn.preprocessing import LabelEncoder
 import getpass
 user = getpass.getuser()
 
@@ -367,13 +367,18 @@ def spark_to_sparse(spark_df, user_or_item='user'):
     """
     df = spark_df.drop('timestamp')
     pd_df = df.toPandas()
+    le1 = LabelEncoder()
+    le2 = LabelEncoder()
+    
+    pd_df['user_id'] = le1.fit_transform(pd_df['user_id'])
+    pd_df['business_id'] = le2.fit_transform(pd_df['business_id'])
 
-    row = pd_df['userId'].values
-    column = pd_df['movieId'].values
+    row = pd_df['user_id'].values
+    column = pd_df['business_id'].values
     values = pd_df['rating'].values
 
-    num_rows = max(pd_df['userId'])
-    num_columns = max(pd_df['movieId'])
+    num_rows = max(pd_df['user_id'])#len(pd_df['user_id'].unique())#max(pd_df['user_id'])
+    num_columns = max(pd_df['business_id'])#len(pd_df['business_id'].unique())#max(pd_df['business_id'])
 
     sparse_mat = np.empty([num_rows + 1, num_columns + 1])
     sparse_mat[row, column] = values

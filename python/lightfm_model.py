@@ -94,6 +94,8 @@ if __name__=='__main__':
     
     sparse_mat = spark_to_sparse(spark_df)
     
+    # breakpoint()
+
     (train_auc, test_auc, train_precision, 
      test_precision, prec_at_k) = lightfm_model(sparse_mat, 
                                                 prec_at_k=10, 

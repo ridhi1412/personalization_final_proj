@@ -80,7 +80,7 @@ def create_test_train(train, test):
     return (X_train, X_test, y_train, y_test)
 
 
-def get_small_sample_df(frac=0.01, prolific=10):
+def get_small_sample_df(frac=0.001, prolific=10):
     df, _, _ = load_pandas()
     print('Getting df')
     # df.user_id.value_count < prolific
@@ -180,22 +180,23 @@ def get_metrics(X_train, X_test, y_train, y_test, predictions, name,
     #           """)
 
 
-def param_tune_content(metrics_dict, ngram_range_list=[(1, 1), (1, 2),
-                                                       (1, 3)]):
+def param_tune_content(metrics_dict, ngram_range_list=[(1, 1),(1,5),
+                                                       (1, 10)]):
 
     for ngram_range in ngram_range_list:
-        (X_train, X_test, y_train, y_test,
-         predictions) = get_content(ngram_range=ngram_range,
-                                    sublinear_tf=False)
-        get_metrics(X_train, X_test, y_train, y_test, predictions,
-                    f'ngram_range = {ngram_range}', metrics_dict)
+        for sublinear_tf in [True, False]:
+            (X_train, X_test, y_train, y_test,
+             predictions) = get_content(ngram_range=ngram_range,
+                                        sublinear_tf=sublinear_tf)
+            get_metrics(X_train, X_test, y_train, y_test, predictions,
+                        f'ngram_range = {ngram_range}, sublinear_tf={sublinear_tf}', 
+                        metrics_dict)
 
-    for sublinear_tf in [True, False]:
-        (X_train, X_test, y_train, y_test,
-         predictions) = get_content(ngram_range=(1, 1),
-                                    sublinear_tf=sublinear_tf)
-        get_metrics(X_train, X_test, y_train, y_test, predictions,
-                    f'sublinear_tf = {sublinear_tf}', metrics_dict)
+            # (X_train, X_test, y_train, y_test,
+            #  predictions) = get_content(ngram_range=(1, 1),
+            #                             sublinear_tf=sublinear_tf)
+            # get_metrics(X_train, X_test, y_train, y_test, predictions,
+            #             f'sublinear_tf = {sublinear_tf}', metrics_dict)
 
 
 def load_metrics_cache(use_cache=True):
@@ -247,3 +248,6 @@ if __name__ == '__main__':
     # metrics_df = load_metrics_cache(use_cache=False)
     metrics_dict = {}
     param_tune_content(metrics_dict, ngram_range_list=[(1, 1), (1, 2), (1, 3)])
+    print('DF IS')
+    metrics_df = pd.DataFrame(metrics_dict).T
+    print(metrics_df)
