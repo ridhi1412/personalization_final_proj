@@ -7,7 +7,6 @@ Created on Sat Dec  7 03:20:02 2019
 
 #import findspark
 #findspark.init()
-from common import CACHE_PATH, EXCEL_PATH
 
 from pyspark import SparkContext
 from pyspark.ml.evaluation import RegressionEvaluator
@@ -16,7 +15,6 @@ from pyspark.sql.functions import explode
 from pyspark.sql import SQLContext
 
 from time import time
-from common import load_pandas, pandas_to_spark
 
 import scipy.sparse as sp
 import numpy as np
@@ -24,9 +22,6 @@ import pandas as pd
 
 import gc
 import os
-from hermes import (calculate_serendipity, calculate_novelty,
-                    calculate_novelty_bias, calculate_prediction_coverage,
-                    calculate_rmse_using_rdd)
 
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
@@ -36,11 +31,29 @@ from sklearn.metrics.pairwise import linear_kernel
 import numpy as np
 from sklearn.model_selection import train_test_split
 
-from colab_filtering_basline2 import get_als_model
-from bias1 import baseline_bias_model, get_tr_te_pr
-from content_based import get_tr_te_pr as get_tr_te_pr_content
-from DL_Baseline import DL_Model
+try:
+    from common import load_pandas, pandas_to_spark
+    from common import CACHE_PATH, EXCEL_PATH
+    from colab_filtering_basline2 import get_als_model
+    from bias1 import baseline_bias_model, get_tr_te_pr
+    from content_based import content_based
+    from DL_Baseline import DL_Model
 
+    from hermes import (calculate_serendipity, calculate_novelty,
+                        calculate_novelty_bias, calculate_prediction_coverage,
+                        calculate_rmse_using_rdd)
+except:
+    from python.common import load_pandas, pandas_to_spark
+    from python.common import CACHE_PATH, EXCEL_PATH
+    from python.colab_filtering_basline2 import get_als_model
+    from python.bias1 import baseline_bias_model, get_tr_te_pr
+    from python.content_based import content_based
+    from python.DL_Baseline import DL_Model
+
+    from python.hermes import (calculate_serendipity, calculate_novelty,
+                        calculate_novelty_bias, calculate_prediction_coverage,
+                        calculate_rmse_using_rdd)
+    
 def get_create_context():
     sc = SparkContext.getOrCreate()  # else get multiple contexts error
     sqlCtx = SQLContext(sc)
@@ -61,12 +74,17 @@ def create_test_train(train, test):
     return (X_train, X_test, y_train, y_test)
 
 
-def get_als():
-    frac = 0.001
+def get_small_sample_df(frac=0.01, prolific=10):
     df, _, _ = load_pandas()
     print('Getting df')
+    # df.user_id.value_count < prolific
     df = df.sample(frac=frac, random_state=0)
     print('Got df')
+    return df
+
+def get_als():
+    
+    df = get_small_sample_df()
 
     # Get predictions from ALS
     (y_predicted, model, rmse_train, rmse_test, coverage_train, coverage_test,
@@ -81,9 +99,7 @@ def get_als():
 
 
 def get_bias():
-    frac = 0.001
-    df, _, _ = load_pandas()
-    df = df.sample(frac=frac, random_state=0)
+    df = get_small_sample_df()
 
     (trainset, testset, predictions, dusers, ditems) = baseline_bias_model(df)
     df_train, df_test, df_pred = get_tr_te_pr(trainset, testset, predictions,
@@ -99,9 +115,7 @@ def get_bias():
 
 
 def get_dl():
-    frac = 0.001
-    df, _, _ = load_pandas()
-    df = df.sample(frac=frac, random_state=0)
+    df = get_small_sample_df()
     
     X_train, X_test, predictions = DL_Model(df, df, None)
 
@@ -111,7 +125,9 @@ def get_dl():
 
 
 def get_content():
-    df_train, df_test, df_pred = get_tr_te_pr_content()
+    df = get_small_sample_df()
+
+    (df_train, df_test, df_pred) = content_based(df)
 
     X_train = pandas_to_spark(df_train)
     X_test = pandas_to_spark(df_test)
@@ -122,7 +138,8 @@ def get_content():
     return (X_train, X_test, y_train, y_test, predictions)
 
 
-def get_metrics(X_train, X_test, y_train, y_test, predictions, name, metrics_dict):
+def get_metrics(X_train, X_test, y_train, y_test, predictions, name, 
+                metrics_dict):
     # print(f'Metrics for {name} ------------------------------------------')
     
     predictions = predictions.drop('rating')
@@ -167,22 +184,26 @@ def load_metrics_cache(use_cache=True):
         metrics_dict = dict()
     
         (X_train, X_test, y_train, y_test, predictions) = get_bias()
-        get_metrics(X_train, X_test, y_train, y_test, predictions, 'BASELINE', metrics_dict)
+        get_metrics(X_train, X_test, y_train, y_test, predictions, 'BASELINE', 
+                    metrics_dict)
     
         print("BASELINE done")
     
         (X_train, X_test, y_train, y_test, predictions) = get_als()
-        get_metrics(X_train, X_test, y_train, y_test, predictions, 'COLLABORATIVE FILTERING', metrics_dict)
+        get_metrics(X_train, X_test, y_train, y_test, predictions, 
+                    'COLLABORATIVE FILTERING', metrics_dict)
     
         print("COLLABORATIVE done")
     
         (X_train, X_test, y_train, y_test, predictions) = get_content()
-        get_metrics(X_train, X_test, y_train, y_test, predictions, 'CONTENT', metrics_dict)
+        get_metrics(X_train, X_test, y_train, y_test, predictions, 'CONTENT', 
+                    metrics_dict)
     
         print("CONTENT DONE")
         
         (X_train, X_test, y_train, y_test, predictions) = get_dl()
-        get_metrics(X_train, X_test, y_train, y_test, predictions, 'DL', metrics_dict)
+        get_metrics(X_train, X_test, y_train, y_test, predictions, 'DL', 
+                    metrics_dict)
         
         metrics_df = pd.DataFrame(metrics_dict).T
         
@@ -198,5 +219,5 @@ if __name__ == '__main__':
     # Create context
     sc, sqlCtx = get_create_context()
 
-    metrics_df = load_metrics_cache(use_cache=True)
+    metrics_df = load_metrics_cache(use_cache=False)
 

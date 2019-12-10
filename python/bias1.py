@@ -7,8 +7,11 @@ from surprise.model_selection import cross_validate, train_test_split
 from surprise import BaselineOnly
 
 #import os
-from common import CACHE_PATH, EXCEL_PATH, load_pandas, pandas_to_spark
-
+try:
+    from common import CACHE_PATH, EXCEL_PATH, load_pandas, pandas_to_spark
+except:
+    from python.common import (CACHE_PATH, EXCEL_PATH, 
+                               load_pandas, pandas_to_spark)
 
 def baseline_bias_model(df):
     """

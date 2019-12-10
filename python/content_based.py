@@ -1,11 +1,9 @@
-from common import CACHE_PATH, EXCEL_PATH
 
 from pyspark.ml.evaluation import RegressionEvaluator
 from pyspark.ml.recommendation import ALS
 from pyspark.sql.functions import explode
 from time import time
 
-from common import load_pandas, pandas_to_spark
 
 import scipy.sparse as sp
 import numpy as np
@@ -17,6 +15,12 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import linear_kernel
 
+try:
+    from common import CACHE_PATH, EXCEL_PATH
+    from common import load_pandas, pandas_to_spark
+except:
+    from python.common import CACHE_PATH, EXCEL_PATH
+    from python.common import load_pandas, pandas_to_spark
 
 def tfidf_vectorizer(df):
     # https://stackoverflow.com/questions/45981037/sklearn-tf-idf-to-drop-numbers
@@ -99,14 +103,7 @@ def get_top_n(recos, num_rec):
         top_n_indicies[row_num] = row.argsort()[-num_rec:]
         return top_n_indicies
 
-
-def get_tr_te_pr():
-    frac = 0.001
-    df, _, _ = load_pandas()
-    print('Getting df')
-    df = df.sample(frac=frac, random_state=0)
-    print('Got df')
-
+def content_based(df):
     tfidf_vectorizer(df)
 
     (df_agg_users, df_agg_rest, user_map, business_map) = get_avg_vectors(df)
@@ -143,7 +140,7 @@ def get_tr_te_pr():
     predictions = df_map[['user_id', 'business_id', 'rating', 'prediction']]
 
     predictions['prediction'] = predictions['prediction'].astype('float64')
-
+    
     return (df_train, df_test, predictions)
 
 

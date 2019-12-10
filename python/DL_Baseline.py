@@ -7,7 +7,11 @@ import json
 from tqdm.auto import tqdm
 import warnings
 from sklearn.preprocessing import LabelEncoder
-from common import pandas_to_spark
+
+try:
+    from common import pandas_to_spark
+except:
+    from python.common import pandas_to_spark
 
 def DL_Model(train, test=None, flag=None, plot=False) :
 

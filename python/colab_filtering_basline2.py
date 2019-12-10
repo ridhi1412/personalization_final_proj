@@ -5,7 +5,6 @@ Created on Sat Oct 19 13:46:40 2019
 @author: rmahajan14
 """
 
-from common import CACHE_PATH, EXCEL_PATH
 import os
 import pandas as pd
 
@@ -13,11 +12,18 @@ from pyspark.ml.evaluation import RegressionEvaluator
 from pyspark.ml.recommendation import ALS
 from pyspark.sql.functions import explode
 from time import time
-from common import CACHE_PATH, EXCEL_PATH
-from common import load_pandas, pandas_to_spark
 
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
+
+try:
+    from common import CACHE_PATH, EXCEL_PATH
+    from common import load_pandas, pandas_to_spark
+except:
+    from python.common import CACHE_PATH, EXCEL_PATH
+    from python.common import load_pandas, pandas_to_spark
+
+
 
 #try:
 #    from sample_df import sample_df_threshold_use_pandas
