@@ -4,12 +4,13 @@ import surprise
 from surprise import Reader
 from surprise.model_selection import cross_validate, train_test_split
 from surprise import BaselineOnly
+from surprise import SVDpp
 
 #import os
 from common import CACHE_PATH, EXCEL_PATH, load_pandas, pandas_to_spark
 
 
-def baseline_bias_model(df):
+def time_location_model(df):
     """
         Shows the performance of model based on just bias
     """
@@ -39,7 +40,7 @@ def baseline_bias_model(df):
     return (trainset, testset, predictions, dusers, ditems)
 
 
-def get_tr_te_pr(train, test, preds, dusers, ditems):
+def get_tr_te_pr_time_loc(train, test, preds, dusers, ditems):
     iterator = train.all_ratings()
     df_train = pd.DataFrame(columns=['user_id', 'business_id', 'rating'])
     # df_train = pd.DataFrame(columns=['user_id', 'business_id', 'rating'])
@@ -88,10 +89,10 @@ def get_tr_te_pr(train, test, preds, dusers, ditems):
 
 if __name__ == '__main__':
     frac = 0.001
-    df = pd.read_csv("../data/time_location_aware.csv")
+    df = pd.read_csv("E:\\yelp\\data\\time_location_aware.csv")
     df = df.sample(frac=frac, random_state=0)
-    (trainset, testset, predictions, dusers, ditems) = baseline_bias_model(df)
-    df_train, df_test, df_pred = get_tr_te_pr(trainset, testset, predictions,
+    (trainset, testset, predictions, dusers, ditems) = time_location_model(df)
+    df_train, df_test, df_pred = get_tr_te_pr_time_loc(trainset, testset, predictions,
                                               dusers, ditems)
 
     spark_train = pandas_to_spark(df_train)

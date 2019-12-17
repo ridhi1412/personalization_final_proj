@@ -42,6 +42,7 @@ try:
     from bias1 import baseline_bias_model, get_tr_te_pr
     from content_based import content_based
     from DL_Baseline import DL_Model
+    from time_location import time_location_model, get_tr_te_pr_time_loc
 
     from hermes import (calculate_serendipity, calculate_novelty,
                         calculate_novelty_bias, calculate_prediction_coverage,
@@ -53,6 +54,7 @@ except:
     from python.bias1 import baseline_bias_model, get_tr_te_pr
     from python.content_based import content_based
     from python.DL_Baseline import DL_Model
+    from python.time_location import time_location_model, get_tr_te_pr_time_loc
 
     from python.hermes import (calculate_serendipity, calculate_novelty,
                                calculate_novelty_bias,
@@ -110,6 +112,22 @@ def get_bias():
 
     (trainset, testset, predictions, dusers, ditems) = baseline_bias_model(df)
     df_train, df_test, df_pred = get_tr_te_pr(trainset, testset, predictions,
+                                              dusers, ditems)
+
+    X_train = pandas_to_spark(df_train)
+    X_test = pandas_to_spark(df_test)
+    predictions = pandas_to_spark(df_pred)
+
+    X_train, X_test, y_train, y_test = create_test_train(X_train, X_test)
+
+    return (X_train, X_test, y_train, y_test, predictions)
+
+
+def get_svdpp():
+    df = get_small_sample_df()
+
+    (trainset, testset, predictions, dusers, ditems) = time_location_model(df)
+    df_train, df_test, df_pred = get_tr_te_pr_time_loc(trainset, testset, predictions,
                                               dusers, ditems)
 
     X_train = pandas_to_spark(df_train)
@@ -209,31 +227,39 @@ def load_metrics_cache(use_cache=True):
     else:
         metrics_dict = dict()
 
-        (X_train, X_test, y_train, y_test, predictions) = get_bias()
-        get_metrics(X_train, X_test, y_train, y_test, predictions, 'BASELINE',
-                    metrics_dict)
+        # (X_train, X_test, y_train, y_test, predictions) = get_bias()
+        # get_metrics(X_train, X_test, y_train, y_test, predictions, 'BASELINE',
+        #             metrics_dict)
 
-        print("BASELINE done")
+        # print("BASELINE done")
 
-        (X_train, X_test, y_train, y_test, predictions) = get_als()
-        get_metrics(X_train, X_test, y_train, y_test, predictions,
-                    'COLLABORATIVE FILTERING', metrics_dict)
+        # (X_train, X_test, y_train, y_test, predictions) = get_als()
+        # get_metrics(X_train, X_test, y_train, y_test, predictions,
+        #             'COLLABORATIVE FILTERING', metrics_dict)
 
-        print("COLLABORATIVE done")
+        # print("COLLABORATIVE done")
 
-        (X_train, X_test, y_train, y_test, predictions) = get_content()
-        get_metrics(X_train, X_test, y_train, y_test, predictions, 'CONTENT',
-                    metrics_dict)
+        # (X_train, X_test, y_train, y_test, predictions) = get_content()
+        # get_metrics(X_train, X_test, y_train, y_test, predictions, 'CONTENT',
+        #             metrics_dict)
 
-        print("CONTENT DONE")
+        # print("CONTENT DONE")
 
-        (X_train, X_test, y_train, y_test, predictions) = get_dl()
-        get_metrics(X_train, X_test, y_train, y_test, predictions, 'DL',
+        # (X_train, X_test, y_train, y_test, predictions) = get_dl()
+        # get_metrics(X_train, X_test, y_train, y_test, predictions, 'DL',
+        #             metrics_dict)
+
+        # metrics_df = pd.DataFrame(metrics_dict).T
+
+        # print("DL DONE")
+        
+        (X_train, X_test, y_train, y_test, predictions) = get_svdpp()
+        get_metrics(X_train, X_test, y_train, y_test, predictions, 'SVDPP',
                     metrics_dict)
 
         metrics_df = pd.DataFrame(metrics_dict).T
 
-        print("DL DONE")
+        print("SVDPP DONE")
 
         pd.to_msgpack(cache_path, metrics_df)
         print(f"Dumping to {cache_path}")
