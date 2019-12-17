@@ -128,8 +128,9 @@ def get_svdpp():
     df = df.sample(frac=0.001, random_state=0)
 
     (trainset, testset, predictions, dusers, ditems) = time_location_model(df)
-    df_train, df_test, df_pred = get_tr_te_pr_time_loc(trainset, testset, predictions,
-                                              dusers, ditems)
+    df_train, df_test, df_pred = get_tr_te_pr_time_loc(trainset, testset,
+                                                       predictions, dusers,
+                                                       ditems)
 
     X_train = pandas_to_spark(df_train)
     X_test = pandas_to_spark(df_test)
@@ -199,17 +200,18 @@ def get_metrics(X_train, X_test, y_train, y_test, predictions, name,
     #           """)
 
 
-def param_tune_content(metrics_dict, ngram_range_list=[(1, 1),(1,5),
-                                                       (1, 10)]):
+def param_tune_content(metrics_dict,
+                       ngram_range_list=[(1, 1), (1, 5), (1, 10)]):
 
     for ngram_range in ngram_range_list:
         for sublinear_tf in [True, False]:
             (X_train, X_test, y_train, y_test,
              predictions) = get_content(ngram_range=ngram_range,
                                         sublinear_tf=sublinear_tf)
-            get_metrics(X_train, X_test, y_train, y_test, predictions,
-                        f'ngram_range = {ngram_range}, sublinear_tf={sublinear_tf}', 
-                        metrics_dict)
+            get_metrics(
+                X_train, X_test, y_train, y_test, predictions,
+                f'ngram_range = {ngram_range}, sublinear_tf={sublinear_tf}',
+                metrics_dict)
 
             # (X_train, X_test, y_train, y_test,
             #  predictions) = get_content(ngram_range=(1, 1),
@@ -253,7 +255,7 @@ def load_metrics_cache(use_cache=True):
         # metrics_df = pd.DataFrame(metrics_dict).T
 
         # print("DL DONE")
-        
+
         (X_train, X_test, y_train, y_test, predictions) = get_svdpp()
         get_metrics(X_train, X_test, y_train, y_test, predictions, 'SVDPP',
                     metrics_dict)

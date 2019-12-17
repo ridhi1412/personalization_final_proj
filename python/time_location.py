@@ -16,12 +16,11 @@ def time_location_model(df):
     """
     lower = df['date_dist_rating'].min()
     upper = df['date_dist_rating'].max()
-    df = df.drop(columns=["rating" , "dist_rating" , "date_rating"],axis=1)
+    df = df.drop(columns=["rating", "dist_rating", "date_rating"], axis=1)
 
     reader = Reader(rating_scale=(lower, upper))  #TODO figure out
 
-    data = surprise.dataset.Dataset.load_from_df(df=df,
-                                                 reader=reader)
+    data = surprise.dataset.Dataset.load_from_df(df=df, reader=reader)
 
     ts = data.build_full_trainset()
     dusers = ts._raw2inner_id_users
@@ -93,9 +92,10 @@ if __name__ == '__main__':
     print(df.columns)
     df = df.sample(frac=frac, random_state=0)
     (trainset, testset, predictions, dusers, ditems) = time_location_model(df)
-    df_train, df_test, df_pred = get_tr_te_pr_time_loc(trainset, testset, predictions,
-                                              dusers, ditems)
+    df_train, df_test, df_pred = get_tr_te_pr_time_loc(trainset, testset,
+                                                       predictions, dusers,
+                                                       ditems)
 
     spark_train = pandas_to_spark(df_train)
     spark_test = pandas_to_spark(df_test)
-    spark_pred = pandas_to_spark(df_pred)    
+    spark_pred = pandas_to_spark(df_pred)

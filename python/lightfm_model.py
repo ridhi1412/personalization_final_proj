@@ -13,12 +13,13 @@ from lightfm.cross_validation import random_train_test_split
 from lightfm import LightFM
 from lightfm.evaluation import precision_at_k
 from lightfm.evaluation import auc_score
-
+import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
+from tqdm.auto import tqdm
 
 
-
-def lightfm_model(data, prec_at_k=100, train_split=0.8):
+def lightfm_model(data, prec_at_k=100, train_split=0.8, epochs=10):
     """
         Code to evaluate LightFm model
         Data is a scipy sparse matrix
@@ -26,11 +27,11 @@ def lightfm_model(data, prec_at_k=100, train_split=0.8):
         https://arxiv.org/abs/1507.08439
     """
     model = LightFM(learning_rate=0.05, loss='logistic')
-    
+
     train, test = random_train_test_split(data,
                                           test_percentage=1 - train_split)
 
-    model.fit(train, epochs=10)
+    model.fit(train, epochs=epochs)  #, num_threads=1)
 
     train_precision = precision_at_k(model, train, k=prec_at_k)
     test_precision = precision_at_k(model,
@@ -49,12 +50,43 @@ def lightfm_model(data, prec_at_k=100, train_split=0.8):
         f'AUC \t\t Train: {train_auc.mean():.2f} \t Test: {test_auc.mean():.2f}'
     )
 
-    return (train_auc, test_auc, train_precision, 
-                 test_precision, prec_at_k)
-    
-    
-def plot_metrics(train_auc, test_auc, train_precision, 
-                 test_precision, prec_at_k):
+    return (train_auc, test_auc, train_precision, test_precision, prec_at_k)
+
+
+def tune_epochs(data, prec_at_k=100, train_split=0.8):
+
+    train_auc_result, test_auc_result, train_precision_result, test_precision_result, prec_at_k_result = list(
+    ), list(), list(), list(), list()
+    train_auc_result_std, test_auc_result_std = list(), list()
+    epochs = [i for i in range(1, 11)]
+    for epoch in tqdm(epochs):
+        (train_auc, test_auc, train_precision, test_precision,
+         prec_at_k) = lightfm_model(data=sparse_mat,
+                                    prec_at_k=prec_at_k,
+                                    train_split=train_split,
+                                    epochs=epoch)
+        train_auc_result.append(train_auc.mean())
+        test_auc_result.append(test_auc.mean())
+        train_precision_result.append(train_precision.mean())
+        test_precision_result.append(test_precision.mean())
+        prec_at_k_result.append(prec_at_k)
+        train_auc_result_std.append(train_auc.std())
+        test_auc_result_std.append(test_auc.std())
+
+    results_df = pd.DataFrame([
+        epochs, train_auc_result, test_auc_result, train_auc_result_std,
+        test_auc_result_std, train_precision_result, test_precision_result,
+        prec_at_k_result
+    ]).T
+    results_df.columns = [
+        'epochs', 'train_auc_mean', 'test_auc_mean', 'train_auc_std',
+        'test_auc_std', 'train_precision', 'test_precision', 'prec_at_k'
+    ]
+    results_df.to_csv('./LightFM_epochs_tune.csv', index=False)
+
+
+def plot_metrics(train_auc, test_auc, train_precision, test_precision,
+                 prec_at_k):
 
     fig, ax = plt.subplots(2, 2, figsize=(15, 10))
 
@@ -85,18 +117,23 @@ def plot_metrics(train_auc, test_auc, train_precision,
     print('\n')
 
 
-if __name__=='__main__':
+if __name__ == '__main__':
+    np.random.seed(42)
     frac = 0.01
     df, _, _ = load_pandas()
     print('Getting df')
     df = df.sample(frac=frac, random_state=0)
     spark_df = pandas_to_spark(df)
-    
+
     sparse_mat = spark_to_sparse(spark_df)
-    
+
     # breakpoint()
 
-    (train_auc, test_auc, train_precision, 
-     test_precision, prec_at_k) = lightfm_model(sparse_mat, 
-                                                prec_at_k=100, 
-                                                train_split=0.8)
+    # To tune epochs, uncomment the following line
+    #tune_epochs(data=sparse_mat, prec_at_k=100, train_split=0.8)
+
+    (train_auc, test_auc, train_precision, test_precision,
+     prec_at_k) = lightfm_model(sparse_mat, prec_at_k=100, train_split=0.8)
+
+    plot_metrics(train_auc, test_auc, train_precision, test_precision,
+                 prec_at_k)
