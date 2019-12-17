@@ -89,7 +89,8 @@ def get_tr_te_pr_time_loc(train, test, preds, dusers, ditems):
 
 if __name__ == '__main__':
     frac = 0.001
-    df = pd.read_csv("E:\\yelp\\data\\time_location_aware.csv")
+    df = pd.read_csv("../data/time_location_aware.csv")
+    print(df.columns)
     df = df.sample(frac=frac, random_state=0)
     (trainset, testset, predictions, dusers, ditems) = time_location_model(df)
     df_train, df_test, df_pred = get_tr_te_pr_time_loc(trainset, testset, predictions,

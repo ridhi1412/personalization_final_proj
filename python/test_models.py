@@ -124,7 +124,8 @@ def get_bias():
 
 
 def get_svdpp():
-    df = get_small_sample_df()
+    df = pd.read_csv("../data/time_location_aware.csv")
+    df = df.sample(frac=0.001, random_state=0)
 
     (trainset, testset, predictions, dusers, ditems) = time_location_model(df)
     df_train, df_test, df_pred = get_tr_te_pr_time_loc(trainset, testset, predictions,
@@ -273,8 +274,9 @@ if __name__ == '__main__':
 
     # metrics_df = load_metrics_cache(use_cache=False)
     metrics_dict = {}
-    param_tune_content(metrics_dict, ngram_range_list=[(1, 1), (1, 2), (1, 3)])
-    print('DF IS')
+    metrics_dict = load_metrics_cache(use_cache=True)
+    # param_tune_content(metrics_dict, ngram_range_list=[(1, 1), (1, 2), (1, 3)])
+    # print('DF IS')
     metrics_df = pd.DataFrame(metrics_dict).T
     print(metrics_df)
-    metrics_df.to_csv('./Metrics_tuning.csv', index=False)
+    # metrics_df.to_csv('./Metrics_tuning.csv', index=False)

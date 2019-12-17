@@ -12,6 +12,7 @@ from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
 from keras.models import Sequential
 from keras.layers import Dense
 from keras.wrappers.scikit_learn import KerasClassifier
+from sklearn.metrics import mean_squared_error
 
 try:
     from common import pandas_to_spark
@@ -121,5 +122,46 @@ if __name__=='__main__':
     os.environ["TF_CPP_MIN_LOG_LEVEL"]="3"
     #df = pd.read_csv('../data/ratings.csv')
     #DL_Model(df,df,None)
-    train_df = pd.read_csv('../data/train')
+    train_df = pd.read_csv('../data/special/train.csv')
+    test_df = pd.read_csv('../data/special/test_prolific_users.csv')
+
+
+ 	# (1048575, 3)
+	# (186, 4)
+
+    X = pd.concat([train_df,test_df])
+
+    le1 = LabelEncoder()
+    le2 = LabelEncoder()
+
+    le1.fit(X['user_id'])
+    le2.fit(X['business_id'])
+
+    X['user_id'] = le1.transform(X['user_id'])
+    X['business_id'] = le2.transform(X['business_id'])
+
+    train_df = X[:1048575]
+    test_df = X[:186]
+
+    X_train = train_df[['user_id','business_id']]
+    y_train = train_df['rating']
+    X_test = test_df[['user_id','business_id']]
+    y_test = test_df['rating']
+
+    print(train_df.shape)
+    print(test_df.shape)
+    
+
+    # X_train['user_id'] = le1.transform(X_train['user_id'])
+    # X_train['business_id'] = le2.transform(X_train['business_id'])
+
+    # X_test['user_id'] = le1.transform(X_test['user_id'])
+    # X_test['business_id'] = le2.transform(X_test['business_id'])
+    
     model = create_model()
+    model.fit(X_train,y_train,batch_size=512,epochs=4)
+    preds = np.clip(model.predict(X_test), a_min=1, a_max=5)
+    err = mean_squared_error(y_true=y_test,y_pred=preds)
+    print(err)
+
+
