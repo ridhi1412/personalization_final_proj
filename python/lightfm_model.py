@@ -18,24 +18,24 @@ import matplotlib.pyplot as plt
 
 
 
-def lightfm_model(data, prec_at_k=10, train_split=0.8):
+def lightfm_model(data, prec_at_k=100, train_split=0.8):
     """
         Code to evaluate LightFm model
         Data is a scipy sparse matrix
         
         https://arxiv.org/abs/1507.08439
     """
-    model = LightFM(learning_rate=0.05, loss='bpr')
+    model = LightFM(learning_rate=0.05, loss='logistic')
     
     train, test = random_train_test_split(data,
                                           test_percentage=1 - train_split)
 
     model.fit(train, epochs=10)
 
-    train_precision = precision_at_k(model, train, k=10)
+    train_precision = precision_at_k(model, train, k=prec_at_k)
     test_precision = precision_at_k(model,
                                     test,
-                                    k=10,
+                                    k=prec_at_k,
                                     train_interactions=train)
 
     train_auc = auc_score(model, train)
@@ -86,7 +86,7 @@ def plot_metrics(train_auc, test_auc, train_precision,
 
 
 if __name__=='__main__':
-    frac = 0.001
+    frac = 0.01
     df, _, _ = load_pandas()
     print('Getting df')
     df = df.sample(frac=frac, random_state=0)
@@ -98,5 +98,5 @@ if __name__=='__main__':
 
     (train_auc, test_auc, train_precision, 
      test_precision, prec_at_k) = lightfm_model(sparse_mat, 
-                                                prec_at_k=10, 
+                                                prec_at_k=100, 
                                                 train_split=0.8)

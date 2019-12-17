@@ -13,6 +13,7 @@ from keras.models import Sequential
 from keras.layers import Dense
 from keras.wrappers.scikit_learn import KerasClassifier
 from sklearn.metrics import mean_squared_error
+import tensorflow as tf
 
 try:
     from common import pandas_to_spark
@@ -100,6 +101,59 @@ def DL_Model(train, test=None, flag=None, plot=False) :
 	#print(preds_spark)
 	return(train_spark, test_spark, preds_spark)
 
+def test_out_of_sample_data():
+    
+    test_file_names = ['test_least_items', 'test_most_items', 'test_mostrecent', 'test_nonprolific_users', 'test_prolific_users']
+
+    train_df = pd.read_csv('../data/special/train.csv')
+    
+    X = train_df
+
+    for test_file in test_file_names:
+	    test_df = pd.read_csv(f'../data/special/{test_file}.csv')
+
+	    X = pd.concat([X,test_df])
+
+    le1 = LabelEncoder()
+    le2 = LabelEncoder()
+
+    le1.fit(X['user_id'])
+    le2.fit(X['business_id'])
+
+    X_train = train_df[['user_id','business_id']]
+    y_train = train_df['rating']
+	
+    X_train['user_id'] = le1.transform(X_train['user_id'])
+    X_train['business_id'] = le2.transform(X_train['business_id'])
+
+    model = create_model()
+    model.fit(X_train,y_train,batch_size=512,epochs=3)
+	
+    results = list()
+    number_of_data_points = list()
+    for test_file in test_file_names:
+	    test_df = pd.read_csv(f'../data/special/{test_file}.csv')
+
+	    X_test = test_df[['user_id','business_id']]
+	    y_test = test_df['rating']
+
+	    #print(train_df.shape)
+	    #print(test_df.shape[0])
+	    
+	    number_of_data_points.append(test_df.shape[0])
+	    
+	    X_test['user_id'] = le1.transform(X_test['user_id'])
+	    X_test['business_id'] = le2.transform(X_test['business_id'])
+	    
+	    preds = np.clip(model.predict(X_test), a_min=1, a_max=5)
+	    err = mean_squared_error(y_true=y_test,y_pred=preds)
+	    results.append(err)
+
+	    #print(f'{test_file} : {err}')
+    results_df = pd.DataFrame([test_file_names,results, number_of_data_points]).T
+    results_df.columns = ['file_name','MSE','number_of_data_points']
+    print(results_df)
+    results_df.to_csv('./dl_diffrent_test_files.csv',index=False)
 
 def create_model():
 # create model
@@ -120,48 +174,11 @@ def create_model():
 if __name__=='__main__':
     warnings.simplefilter('ignore')
     os.environ["TF_CPP_MIN_LOG_LEVEL"]="3"
+    np.random.seed(42)
+    tf.compat.v2.random.set_seed(42)
     #df = pd.read_csv('../data/ratings.csv')
     #DL_Model(df,df,None)
-    train_df = pd.read_csv('../data/special/train.csv')
-    test_df = pd.read_csv('../data/special/test_prolific_users.csv')
 
-
- 	# (1048575, 3)
-	# (186, 4)
-
-    X = pd.concat([train_df,test_df])
-
-    le1 = LabelEncoder()
-    le2 = LabelEncoder()
-
-    le1.fit(X['user_id'])
-    le2.fit(X['business_id'])
-
-    X['user_id'] = le1.transform(X['user_id'])
-    X['business_id'] = le2.transform(X['business_id'])
-
-    train_df = X[:1048575]
-    test_df = X[:186]
-
-    X_train = train_df[['user_id','business_id']]
-    y_train = train_df['rating']
-    X_test = test_df[['user_id','business_id']]
-    y_test = test_df['rating']
-
-    print(train_df.shape)
-    print(test_df.shape)
-    
-
-    # X_train['user_id'] = le1.transform(X_train['user_id'])
-    # X_train['business_id'] = le2.transform(X_train['business_id'])
-
-    # X_test['user_id'] = le1.transform(X_test['user_id'])
-    # X_test['business_id'] = le2.transform(X_test['business_id'])
-    
-    model = create_model()
-    model.fit(X_train,y_train,batch_size=512,epochs=4)
-    preds = np.clip(model.predict(X_test), a_min=1, a_max=5)
-    err = mean_squared_error(y_true=y_test,y_pred=preds)
-    print(err)
+    test_out_of_sample_data()
 
 
