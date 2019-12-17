@@ -251,3 +251,4 @@ if __name__ == '__main__':
     print('DF IS')
     metrics_df = pd.DataFrame(metrics_dict).T
     print(metrics_df)
+    metrics_df.to_csv('./Metrics_tuning.csv', index=False)

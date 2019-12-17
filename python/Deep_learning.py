@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -7,7 +8,7 @@ import json
 from tqdm.auto import tqdm
 import warnings
 from sklearn.preprocessing import LabelEncoder
-from sklearn.model_selection import GridSearchCV
+from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
 from keras.models import Sequential
 from keras.layers import Dense
 from keras.wrappers.scikit_learn import KerasClassifier
@@ -50,12 +51,12 @@ def DL_Model(train, test=None, flag=None, plot=False) :
 
 	model = KerasClassifier(build_fn=create_model, verbose=0)
 	# define the grid search parameters
-	batch_size = [128, 246, 512, 1024]
-	epochs = [1,3,6,10]
 	optimizer = ['SGD', 'RMSprop', 'Adam']
 	learn_rate = [0.001, 0.001,0.1, 1]
-	param_grid = {'epochs':[1]}#dict(batch_size=batch_size, epochs=epochs, optimizer=optimizer)
-	grid = GridSearchCV(estimator=model, param_grid=param_grid, n_jobs=-1, cv=3,verbose=3)
+	param_grid = {'epochs':[1,3,6],
+					"batch_size":[512,1024,2048]}#dict(batch_size=batch_size, epochs=epochs, optimizer=optimizer)
+	grid = RandomizedSearchCV(estimator=model, param_grid=param_grid, n_jobs=1, cv=3,verbose=3)
+	#grid = GridSearchCV(estimator=model, param_grid=param_grid, n_jobs=1, cv=3,verbose=3)
 	grid_result = grid.fit(X, y)
 	# summarize results
 	print("Best: %f using %s" % (grid_result.best_score_, grid_result.best_params_))
@@ -64,7 +65,9 @@ def DL_Model(train, test=None, flag=None, plot=False) :
 	params = grid_result.cv_results_['params']
 	for mean, stdev, param in zip(means, stds, params):
 		print("%f (%f) with: %r" % (mean, stdev, param))
-
+	
+	scores_df = pd.DataFrame(grid_result.cv_results_)
+	scores_df.to_csv('DL_results.csv',index=False)
 	if plot:
 		plt.plot(hist.history['loss'])
 		plt.plot(hist.history['val_loss'])
@@ -78,7 +81,7 @@ def DL_Model(train, test=None, flag=None, plot=False) :
 	test['user_id'] = le1.transform(test['user_id'])
 	test['business_id'] = le2.transform(test['business_id'])
 	preds = test[['user_id', 'business_id','rating']]
-	preds['predictions'] = np.clip(model.predict(test.drop('rating',axis=1)), a_min=1, a_max=5)
+	preds['predictions'] = np.clip(grid.best_estimator_.predict(test.drop('rating',axis=1)), a_min=1, a_max=5)
 	#print(preds.head())
 
 	train['user_id'] = le1.transform(train['user_id'])
@@ -115,5 +118,8 @@ def create_model():
 
 if __name__=='__main__':
     warnings.simplefilter('ignore')
-    df = pd.read_csv('../data/ratings.csv')
-    DL_Model(df,df,None)
+    os.environ["TF_CPP_MIN_LOG_LEVEL"]="3"
+    #df = pd.read_csv('../data/ratings.csv')
+    #DL_Model(df,df,None)
+    train_df = pd.read_csv('../data/train')
+    model = create_model()
