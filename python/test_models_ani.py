@@ -41,7 +41,7 @@ try:
     from colab_filtering_basline2 import get_als_model
     from bias1 import baseline_bias_model, get_tr_te_pr
     from content_based import content_based
-    from DL_Baseline import DL_Model
+    from Deep_learning import DL_Model
     from time_location import time_location_model, get_tr_te_pr_time_loc
 
     from hermes import (calculate_serendipity, calculate_novelty,
@@ -53,7 +53,7 @@ except:
     from python.colab_filtering_basline2 import get_als_model
     from python.bias1 import baseline_bias_model, get_tr_te_pr
     from python.content_based import content_based
-    from python.DL_Baseline import DL_Model
+    from python.Deep_learning import DL_Model
     from python.time_location import time_location_model, get_tr_te_pr_time_loc
 
     from python.hermes import (calculate_serendipity, calculate_novelty,
@@ -61,7 +61,7 @@ except:
                                calculate_prediction_coverage,
                                calculate_rmse_using_rdd)
     
-count_unique_biz_total = 0
+# count_unique_biz_total = 0
 
 
 def get_create_context():
@@ -89,7 +89,9 @@ def get_small_sample_df(frac=0.001, prolific=10):
     print('Getting df')
     # df.user_id.value_count < prolific
     df = df.sample(frac=frac, random_state=0)
+    global count_unique_biz_total
     count_unique_biz_total = len(list(df['business_id'].unique()))
+    # breakpoint()
     print('Got df')
     return df
 
@@ -153,7 +155,7 @@ def get_dl():
     return (X_train, X_test, y_train, y_test, predictions)
 
 
-def get_content(ngram_range, sublinear_tf):
+def get_content(ngram_range=(1, 1), sublinear_tf=True):
     df = get_small_sample_df()
 
     (df_train, df_test, df_pred) = content_based(df, ngram_range, sublinear_tf)
@@ -181,7 +183,7 @@ def get_metrics(X_train, X_test, y_train, y_test, predictions, name,
 
     rmse = calculate_rmse_using_rdd(X_train, X_test, predictions)
         
-    coverage_rating = 2.5
+    coverage_rating = 1
     coverage = calculate_coverage(predictions, coverage_rating)
 
     # # pred_coverage = calculate_prediction_coverage(y_test, predictions)
@@ -200,7 +202,7 @@ def get_metrics(X_train, X_test, y_train, y_test, predictions, name,
     print(f'avg_overall_serendipity = {avg_overall_serendipity:.2f}')
     print(f'avg_serendipity         = {avg_serendipity:.2f}')
     print(f'rmse                    = {rmse:.2f}')
-    print(f'coverage                = {coverage:.2f}')
+    print(f'coverage                = {coverage:.6f}')
 
     # print(f"""{avg_overall_novelty} = avg_overall_novelty,
     #           {avg_novelty}=avg_novelty,
@@ -245,51 +247,55 @@ def load_metrics_cache(use_cache=True):
 
         print("BASELINE done")
 
-        # (X_train, X_test, y_train, y_test, predictions) = get_als()
-        # get_metrics(X_train, X_test, y_train, y_test, predictions,
-        #             'COLLABORATIVE FILTERING', metrics_dict)
+        (X_train, X_test, y_train, y_test, predictions) = get_als()
+        get_metrics(X_train, X_test, y_train, y_test, predictions,
+                    'COLLABORATIVE FILTERING', metrics_dict)
 
-        # print("COLLABORATIVE done")
+        print("COLLABORATIVE done")
 
-        # (X_train, X_test, y_train, y_test, predictions) = get_content()
-        # get_metrics(X_train, X_test, y_train, y_test, predictions, 'CONTENT',
-        #             metrics_dict)
+        (X_train, X_test, y_train, y_test, predictions) = get_content()
+        get_metrics(X_train, X_test, y_train, y_test, predictions, 'CONTENT',
+                    metrics_dict)
 
-        # print("CONTENT DONE")
+        print("CONTENT DONE")
 
-        # (X_train, X_test, y_train, y_test, predictions) = get_dl()
-        # get_metrics(X_train, X_test, y_train, y_test, predictions, 'DL',
-        #             metrics_dict)
+        (X_train, X_test, y_train, y_test, predictions) = get_dl()
+        get_metrics(X_train, X_test, y_train, y_test, predictions, 'DL',
+                    metrics_dict)
 
         # metrics_df = pd.DataFrame(metrics_dict).T
 
-        # print("DL DONE")
+        print("DL DONE")
         
-        # (X_train, X_test, y_train, y_test, predictions) = get_svdpp()
-        # get_metrics(X_train, X_test, y_train, y_test, predictions, 'SVDPP',
-        #             metrics_dict)
+        (X_train, X_test, y_train, y_test, predictions) = get_svdpp()
+        get_metrics(X_train, X_test, y_train, y_test, predictions, 'SVDPP',
+                    metrics_dict)
 
         # metrics_df = pd.DataFrame(metrics_dict).T
 
-        # print("SVDPP DONE")
+        print("SVDPP DONE")
 
         # pd.to_msgpack(cache_path, metrics_df)
         # print(f"Dumping to {cache_path}")
 
-    return metrics_df
+    return metrics_dict
 
 
 def calculate_coverage(preds, rate):
-    preds_pd = preds.collect()
+    preds_pd = preds.toPandas()
     
+    # breakpoint()		
+
     # Filter preds > 2
-    preds_pd = preds_pd[preds_pd.predictions >= rate]
+    preds_pd = preds_pd[preds_pd.prediction >= rate]
     
     # Count unique
     count_un = len(list(preds_pd['business_id'].unique()))
     
-    total = count_unique_biz_total
-    
+    # total = count_unique_biz_total
+	
+    total = 5873
+
     return count_un / total
 
 
@@ -306,4 +312,4 @@ if __name__ == '__main__':
     # print('DF IS')
     metrics_df = pd.DataFrame(metrics_dict).T
     print(metrics_df)
-    metrics_df.to_csv('./Metrics_tuning.csv', index=False)
+    metrics_df.to_csv('./Metrics_tuning_new.csv', index=True)

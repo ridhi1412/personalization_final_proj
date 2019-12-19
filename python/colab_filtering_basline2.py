@@ -36,7 +36,7 @@ except:
 
 def get_als_model(df,
                   rank,
-                  regParam,
+                  regParam=1,
                   split=[0.8, 0.2],
                   model='ALS',
                   evaluator='Regression',

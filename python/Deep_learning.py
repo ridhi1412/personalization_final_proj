@@ -68,16 +68,22 @@ def DL_Model(train, test=None, flag=None, plot=False):
     # define the grid search parameters
     optimizer = ['SGD', 'RMSprop', 'Adam']
     learn_rate = [0.001, 0.001, 0.1, 1]
+    # param_grid = {
+    #     'epochs': [1, 3, 6],
+    #     "batch_size": [512, 1024, 2048]
+    # }  
+
     param_grid = {
-        'epochs': [1, 3, 6],
-        "batch_size": [512, 1024, 2048]
-    }  #dict(batch_size=batch_size, epochs=epochs, optimizer=optimizer)
-    grid = RandomizedSearchCV(estimator=model,
-                              param_grid=param_grid,
-                              n_jobs=1,
-                              cv=3,
-                              verbose=3)
-    #grid = GridSearchCV(estimator=model, param_grid=param_grid, n_jobs=1, cv=3,verbose=3)
+        'epochs': [3],
+        "batch_size": [1024]
+    }
+    #dict(batch_size=batch_size, epochs=epochs, optimizer=optimizer)
+    # grid = RandomizedSearchCV(estimator=model,
+    #                           param_grid=param_grid,
+    #                           n_jobs=1,
+    #                           cv=3,
+    #                           verbose=3)
+    grid = GridSearchCV(estimator=model, param_grid=param_grid, n_jobs=1, cv=3,verbose=3)
     grid_result = grid.fit(X, y)
     # summarize results
     print("Best: %f using %s" %
@@ -102,7 +108,7 @@ def DL_Model(train, test=None, flag=None, plot=False):
     test['user_id'] = le1.transform(test['user_id'])
     test['business_id'] = le2.transform(test['business_id'])
     preds = test[['user_id', 'business_id', 'rating']]
-    preds['predictions'] = np.clip(grid.best_estimator_.predict(
+    preds['prediction'] = np.clip(grid.best_estimator_.predict(
         test.drop('rating', axis=1)),
                                    a_min=1,
                                    a_max=5)
