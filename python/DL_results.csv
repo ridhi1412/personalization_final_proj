@@ -1,2 +1,0 @@
-mean_fit_time,std_fit_time,mean_score_time,std_score_time,param_batch_size,param_epochs,params,split0_test_score,split1_test_score,split2_test_score,mean_test_score,std_test_score,rank_test_score
-1.1485888957977295,0.8505079892447063,0.0474541982014974,0.011645077566996587,1024,3,"{'batch_size': 1024, 'epochs': 3}",0.0004486316907357052,0.003140421731112556,0.0017953321364452424,0.0017947951057881804,0.0010990009253524149,1
