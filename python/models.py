@@ -38,8 +38,8 @@ from sklearn.model_selection import train_test_split
 try:
     from common import load_pandas, pandas_to_spark
     from common import CACHE_PATH, EXCEL_PATH
-    from colab_filtering_basline2 import get_als_model
-    from bias1 import baseline_bias_model, get_tr_te_pr
+    from colab_filtering import get_als_model
+    from bias import baseline_bias_model, get_tr_te_pr
     from content_based import content_based
     from Deep_learning import DL_Model
     from time_location import time_location_model, get_tr_te_pr_time_loc
@@ -50,8 +50,8 @@ try:
 except:
     from python.common import load_pandas, pandas_to_spark
     from python.common import CACHE_PATH, EXCEL_PATH
-    from python.colab_filtering_basline2 import get_als_model
-    from python.bias1 import baseline_bias_model, get_tr_te_pr
+    from python.colab_filtering import get_als_model
+    from python.bias import baseline_bias_model, get_tr_te_pr
     from python.content_based import content_based
     from python.Deep_learning import DL_Model
     from python.time_location import time_location_model, get_tr_te_pr_time_loc
@@ -124,7 +124,7 @@ def get_bias():
     predictions = pandas_to_spark(df_pred)
 
     X_train, X_test, y_train, y_test = create_test_train(X_train, X_test)
-
+    
     return (X_train, X_test, y_train, y_test, predictions)
 
 
@@ -146,9 +146,12 @@ def get_svdpp():
 
 
 def get_dl():
-    df = get_small_sample_df()
+    #df = get_small_sample_df()
 
-    X_train, X_test, predictions = DL_Model(df, df, None)
+    df = pd.read_csv('../data/Allcombineddata.csv')
+    # frac = int(0.8*len(df))
+    # df_train, df_test = df[:frac], df[frac:]
+    X_train, X_test, predictions = DL_Model(df,df,"Both")
 
     X_train, X_test, y_train, y_test = create_test_train(X_train, X_test)
 
@@ -241,37 +244,43 @@ def load_metrics_cache(use_cache=True):
     else:
         metrics_dict = dict()
 
-        (X_train, X_test, y_train, y_test, predictions) = get_bias()
-        get_metrics(X_train, X_test, y_train, y_test, predictions, 'BASELINE',
-                    metrics_dict)
+        # (X_train, X_test, y_train, y_test, predictions) = get_bias()
+        # get_metrics(X_train, X_test, y_train, y_test, predictions, 'BASELINE',
+        #             metrics_dict)
 
-        print("BASELINE done")
 
-        (X_train, X_test, y_train, y_test, predictions) = get_als()
-        get_metrics(X_train, X_test, y_train, y_test, predictions,
-                    'COLLABORATIVE FILTERING', metrics_dict)
+        # print("BASELINE done")
+        # gc.collect()
+        # (X_train, X_test, y_train, y_test, predictions) = get_als()
+        # get_metrics(X_train, X_test, y_train, y_test, predictions,
+        #             'COLLABORATIVE FILTERING', metrics_dict)
 
-        print("COLLABORATIVE done")
+        # print("COLLABORATIVE done")
+        # gc.collect()
+        # (X_train, X_test, y_train, y_test, predictions) = get_content()
+        # get_metrics(X_train, X_test, y_train, y_test, predictions, 'CONTENT',
+        #             metrics_dict)
 
-        (X_train, X_test, y_train, y_test, predictions) = get_content()
-        get_metrics(X_train, X_test, y_train, y_test, predictions, 'CONTENT',
-                    metrics_dict)
-
-        print("CONTENT DONE")
+        
+        # print("CONTENT DONE")
+        # gc.collect()
+        
+        
 
         (X_train, X_test, y_train, y_test, predictions) = get_dl()
         get_metrics(X_train, X_test, y_train, y_test, predictions, 'DL',
                     metrics_dict)
 
         # metrics_df = pd.DataFrame(metrics_dict).T
-
+        gc.collect()
         print("DL DONE")
-        
-        (X_train, X_test, y_train, y_test, predictions) = get_svdpp()
-        get_metrics(X_train, X_test, y_train, y_test, predictions, 'SVDPP',
-                    metrics_dict)
 
-        # metrics_df = pd.DataFrame(metrics_dict).T
+
+        # (X_train, X_test, y_train, y_test, predictions) = get_svdpp()
+        # get_metrics(X_train, X_test, y_train, y_test, predictions, 'SVDPP',
+        #             metrics_dict)
+
+        metrics_df = pd.DataFrame(metrics_dict).T
 
         print("SVDPP DONE")
 

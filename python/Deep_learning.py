@@ -14,6 +14,7 @@ from keras.layers import Dense
 from keras.wrappers.scikit_learn import KerasClassifier
 from sklearn.metrics import mean_squared_error
 import tensorflow as tf
+import gc
 
 try:
     from common import pandas_to_spark
@@ -74,8 +75,8 @@ def DL_Model(train, test=None, flag=None, plot=False):
     # }  
 
     param_grid = {
-        'epochs': [3],
-        "batch_size": [1024]
+        'epochs': [1],
+        "batch_size": [512]
     }
     #dict(batch_size=batch_size, epochs=epochs, optimizer=optimizer)
     # grid = RandomizedSearchCV(estimator=model,
@@ -83,7 +84,7 @@ def DL_Model(train, test=None, flag=None, plot=False):
     #                           n_jobs=1,
     #                           cv=3,
     #                           verbose=3)
-    grid = GridSearchCV(estimator=model, param_grid=param_grid, n_jobs=1, cv=3,verbose=3)
+    grid = GridSearchCV(estimator=model, param_grid=param_grid, n_jobs=1, cv=2,verbose=3)
     grid_result = grid.fit(X, y)
     # summarize results
     print("Best: %f using %s" %
@@ -127,6 +128,10 @@ def DL_Model(train, test=None, flag=None, plot=False):
     #print(train_spark)
     #print(test_spark)
     #print(preds_spark)
+
+    del preds, train_ret,X,y, model
+    gc.collect()
+
     return (train_spark, test_spark, preds_spark)
 
 
@@ -192,7 +197,7 @@ def test_out_of_sample_data():
 def create_model():
     # create model
     model = keras.Sequential()
-    model.add(keras.layers.Dense(16, input_dim=2, activation='relu'))
+    model.add(keras.layers.Dense(16, input_dim=25, activation='relu'))
     model.add(keras.layers.Dense(8, activation='relu'))
     model.add(keras.layers.Dense(16, activation='relu'))
     model.add(keras.layers.Dense(1, activation=None))
@@ -208,7 +213,14 @@ if __name__ == '__main__':
     os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
     np.random.seed(42)
     tf.compat.v2.random.set_seed(42)
+    
+    # For just user id business id
     #df = pd.read_csv('../data/ratings.csv')
-    #DL_Model(df,df,None)
+    
+    # For all data
+    df = pd.read_csv('../data/Allcombineddata.csv')
+    
+    DL_Model(df,df,"Both")
 
-    test_out_of_sample_data()
+
+    #test_out_of_sample_data()
